@@ -184,4 +184,98 @@ impl ObsidianClient {
 
         Ok(resp.json().await?)
     }
+
+    pub async fn search_simple(&self, query: &str) -> Result<serde_json::Value, AppError> {
+        let resp = self
+            .http
+            .post(self.url("/search/simple/"))
+            .header("Authorization", self.auth_header())
+            .header("Content-Type", "text/plain")
+            .body(query.to_string())
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Api {
+                status: resp.status().as_u16(),
+                body: resp.text().await.unwrap_or_default(),
+            });
+        }
+
+        Ok(resp.json().await?)
+    }
+
+    pub async fn search_query(&self, query: &str) -> Result<serde_json::Value, AppError> {
+        let resp = self
+            .http
+            .post(self.url("/search/"))
+            .header("Authorization", self.auth_header())
+            .header("Content-Type", "application/vnd.olrapi.dataview.dql+txt")
+            .body(query.to_string())
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Api {
+                status: resp.status().as_u16(),
+                body: resp.text().await.unwrap_or_default(),
+            });
+        }
+
+        Ok(resp.json().await?)
+    }
+
+    pub async fn list_commands(&self) -> Result<serde_json::Value, AppError> {
+        let resp = self
+            .http
+            .get(self.url("/commands/"))
+            .header("Authorization", self.auth_header())
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Api {
+                status: resp.status().as_u16(),
+                body: resp.text().await.unwrap_or_default(),
+            });
+        }
+
+        Ok(resp.json().await?)
+    }
+
+    pub async fn execute_command(&self, command_id: &str) -> Result<(), AppError> {
+        let resp = self
+            .http
+            .post(self.url(&format!("/commands/{}/", command_id)))
+            .header("Authorization", self.auth_header())
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Api {
+                status: resp.status().as_u16(),
+                body: resp.text().await.unwrap_or_default(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn open_file(&self, filename: &str) -> Result<(), AppError> {
+        let resp = self
+            .http
+            .post(self.url(&format!("/open/{}", filename)))
+            .header("Authorization", self.auth_header())
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Api {
+                status: resp.status().as_u16(),
+                body: resp.text().await.unwrap_or_default(),
+            });
+        }
+
+        Ok(())
+    }
 }
