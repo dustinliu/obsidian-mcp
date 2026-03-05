@@ -900,6 +900,7 @@ dependencies = [
 name = "obsidian-mcp"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "clap",
  "reqwest",
@@ -909,6 +910,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "tokio-util",
  "tracing",
  "tracing-subscriber",
 ]
