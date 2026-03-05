@@ -16,10 +16,17 @@ use crate::client::ObsidianClient;
 use crate::server::ObsidianServer;
 
 #[derive(Parser)]
-#[command(name = "obsidian-mcp", about = "MCP server for Obsidian vault operations")]
+#[command(
+    name = "obsidian-mcp",
+    about = "MCP server for Obsidian vault operations"
+)]
 struct Cli {
     /// Obsidian REST API URL
-    #[arg(long, env = "OBSIDIAN_API_URL", default_value = "https://127.0.0.1:27124")]
+    #[arg(
+        long,
+        env = "OBSIDIAN_API_URL",
+        default_value = "https://127.0.0.1:27124"
+    )]
     api_url: String,
 
     /// Obsidian REST API key

@@ -323,13 +323,7 @@ impl ObsidianServer {
         Parameters(args): Parameters<UpdatePeriodicNoteArgs>,
     ) -> Result<CallToolResult, McpError> {
         self.client
-            .update_periodic_note(
-                &args.period,
-                args.year,
-                args.month,
-                args.day,
-                &args.content,
-            )
+            .update_periodic_note(&args.period, args.year, args.month, args.day, &args.content)
             .await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
         Ok(CallToolResult::success(vec![Content::text(format!(
@@ -344,13 +338,7 @@ impl ObsidianServer {
         Parameters(args): Parameters<AppendPeriodicNoteArgs>,
     ) -> Result<CallToolResult, McpError> {
         self.client
-            .append_periodic_note(
-                &args.period,
-                args.year,
-                args.month,
-                args.day,
-                &args.content,
-            )
+            .append_periodic_note(&args.period, args.year, args.month, args.day, &args.content)
             .await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
         Ok(CallToolResult::success(vec![Content::text(format!(
