@@ -1,19 +1,14 @@
-mod client;
-mod error;
-mod server;
-
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use clap::Parser;
+use obsidian_mcp::client::ObsidianClient;
+use obsidian_mcp::server::ObsidianServer;
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use rmcp::transport::streamable_http_server::tower::{
     StreamableHttpServerConfig, StreamableHttpService,
 };
 use tokio_util::sync::CancellationToken;
-
-use crate::client::ObsidianClient;
-use crate::server::ObsidianServer;
 
 #[derive(Parser)]
 #[command(
