@@ -278,4 +278,129 @@ impl ObsidianClient {
 
         Ok(())
     }
+
+    fn periodic_url(
+        &self,
+        period: &str,
+        year: Option<u32>,
+        month: Option<u32>,
+        day: Option<u32>,
+    ) -> String {
+        match (year, month, day) {
+            (Some(y), Some(m), Some(d)) => {
+                self.url(&format!("/periodic/{}/{}/{}/{}/", period, y, m, d))
+            }
+            _ => self.url(&format!("/periodic/{}/", period)),
+        }
+    }
+
+    pub async fn get_periodic_note(
+        &self,
+        period: &str,
+        year: Option<u32>,
+        month: Option<u32>,
+        day: Option<u32>,
+    ) -> Result<String, AppError> {
+        let resp = self
+            .http
+            .get(self.periodic_url(period, year, month, day))
+            .header("Authorization", self.auth_header())
+            .header("Accept", "text/markdown")
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Api {
+                status: resp.status().as_u16(),
+                body: resp.text().await.unwrap_or_default(),
+            });
+        }
+
+        Ok(resp.text().await?)
+    }
+
+    pub async fn update_periodic_note(
+        &self,
+        period: &str,
+        year: Option<u32>,
+        month: Option<u32>,
+        day: Option<u32>,
+        content: &str,
+    ) -> Result<(), AppError> {
+        let resp = self
+            .http
+            .put(self.periodic_url(period, year, month, day))
+            .header("Authorization", self.auth_header())
+            .header("Content-Type", "text/markdown")
+            .body(content.to_string())
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Api {
+                status: resp.status().as_u16(),
+                body: resp.text().await.unwrap_or_default(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn append_periodic_note(
+        &self,
+        period: &str,
+        year: Option<u32>,
+        month: Option<u32>,
+        day: Option<u32>,
+        content: &str,
+    ) -> Result<(), AppError> {
+        let resp = self
+            .http
+            .post(self.periodic_url(period, year, month, day))
+            .header("Authorization", self.auth_header())
+            .header("Content-Type", "text/markdown")
+            .body(content.to_string())
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Api {
+                status: resp.status().as_u16(),
+                body: resp.text().await.unwrap_or_default(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn patch_periodic_note(
+        &self,
+        period: &str,
+        year: Option<u32>,
+        month: Option<u32>,
+        day: Option<u32>,
+        heading: Option<&str>,
+        content: &str,
+    ) -> Result<String, AppError> {
+        let mut req = self
+            .http
+            .patch(self.periodic_url(period, year, month, day))
+            .header("Authorization", self.auth_header())
+            .header("Content-Type", "text/markdown");
+
+        if let Some(heading) = heading {
+            req = req.header("X-Heading", heading);
+        }
+
+        let resp = req.body(content.to_string()).send().await?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::Api {
+                status: resp.status().as_u16(),
+                body: resp.text().await.unwrap_or_default(),
+            });
+        }
+
+        Ok(resp.text().await?)
+    }
 }
