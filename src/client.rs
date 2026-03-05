@@ -404,3 +404,50 @@ impl ObsidianClient {
         Ok(resp.text().await?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_client() -> ObsidianClient {
+        ObsidianClient::new("https://localhost:27124".to_string(), "test-api-key".to_string())
+    }
+
+    #[test]
+    fn url_concatenates_base_and_path() {
+        let client = make_client();
+        assert_eq!(client.url("/vault/test.md"), "https://localhost:27124/vault/test.md");
+    }
+
+    #[test]
+    fn auth_header_formats_bearer_token() {
+        let client = make_client();
+        assert_eq!(client.auth_header(), "Bearer test-api-key");
+    }
+
+    #[test]
+    fn periodic_url_with_all_date_params() {
+        let client = make_client();
+        let url = client.periodic_url("daily", Some(2026), Some(3), Some(6));
+        assert_eq!(url, "https://localhost:27124/periodic/daily/2026/3/6/");
+    }
+
+    #[test]
+    fn periodic_url_without_date_params() {
+        let client = make_client();
+        let url = client.periodic_url("weekly", None, None, None);
+        assert_eq!(url, "https://localhost:27124/periodic/weekly/");
+    }
+
+    #[test]
+    fn periodic_url_with_partial_date_falls_back_to_period_only() {
+        let client = make_client();
+        // year only, no month/day
+        let url = client.periodic_url("monthly", Some(2026), None, None);
+        assert_eq!(url, "https://localhost:27124/periodic/monthly/");
+
+        // year and month, no day
+        let url = client.periodic_url("daily", Some(2026), Some(3), None);
+        assert_eq!(url, "https://localhost:27124/periodic/daily/");
+    }
+}
