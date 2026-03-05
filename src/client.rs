@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::error::AppError;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, serde::Serialize)]
 pub struct ServerInfo {
     pub status: String,
     #[serde(default)]
