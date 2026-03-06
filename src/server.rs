@@ -9,6 +9,10 @@ use serde::Deserialize;
 
 use crate::client::ObsidianClient;
 
+fn to_mcp_error(e: impl std::fmt::Display) -> McpError {
+    McpError::internal_error(e.to_string(), None)
+}
+
 #[derive(Clone)]
 pub struct ObsidianServer {
     client: Arc<ObsidianClient>,
@@ -155,7 +159,7 @@ impl ObsidianServer {
             .client
             .read_note(&args.path)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(content)]))
     }
 
@@ -167,7 +171,7 @@ impl ObsidianServer {
         self.client
             .create_note(&args.path, &args.content)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(format!(
             "Created note at {}",
             args.path
@@ -182,7 +186,7 @@ impl ObsidianServer {
         self.client
             .append_note(&args.path, &args.content)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(format!(
             "Appended to {}",
             args.path
@@ -198,7 +202,7 @@ impl ObsidianServer {
             .client
             .patch_note(&args.path, args.heading.as_deref(), &args.content)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
@@ -210,7 +214,7 @@ impl ObsidianServer {
         self.client
             .delete_note(&args.path)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(format!(
             "Deleted {}",
             args.path
@@ -226,9 +230,8 @@ impl ObsidianServer {
             .client
             .list_files(args.path.as_deref())
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-        let json = serde_json::to_string_pretty(&result)
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
+        let json = serde_json::to_string(&result).map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
@@ -241,9 +244,8 @@ impl ObsidianServer {
             .client
             .search_simple(&args.query)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-        let json = serde_json::to_string_pretty(&result)
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
+        let json = serde_json::to_string(&result).map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
@@ -256,21 +258,15 @@ impl ObsidianServer {
             .client
             .search_query(&args.query)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-        let json = serde_json::to_string_pretty(&result)
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
+        let json = serde_json::to_string(&result).map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
     #[tool(description = "List all available Obsidian commands")]
     async fn list_commands(&self) -> Result<CallToolResult, McpError> {
-        let result = self
-            .client
-            .list_commands()
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-        let json = serde_json::to_string_pretty(&result)
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        let result = self.client.list_commands().await.map_err(to_mcp_error)?;
+        let json = serde_json::to_string(&result).map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
@@ -282,7 +278,7 @@ impl ObsidianServer {
         self.client
             .execute_command(&args.command_id)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(format!(
             "Executed command: {}",
             args.command_id
@@ -297,7 +293,7 @@ impl ObsidianServer {
         self.client
             .open_file(&args.path)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(format!(
             "Opened {}",
             args.path
@@ -313,7 +309,7 @@ impl ObsidianServer {
             .client
             .get_periodic_note(&args.period, args.year, args.month, args.day)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(content)]))
     }
 
@@ -325,7 +321,7 @@ impl ObsidianServer {
         self.client
             .update_periodic_note(&args.period, args.year, args.month, args.day, &args.content)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(format!(
             "Updated {} periodic note",
             args.period
@@ -340,7 +336,7 @@ impl ObsidianServer {
         self.client
             .append_periodic_note(&args.period, args.year, args.month, args.day, &args.content)
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(format!(
             "Appended to {} periodic note",
             args.period
@@ -363,19 +359,14 @@ impl ObsidianServer {
                 &args.content,
             )
             .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     #[tool(description = "Get Obsidian Local REST API server status and version info")]
     async fn server_info(&self) -> Result<CallToolResult, McpError> {
-        let info = self
-            .client
-            .server_info()
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-        let json = serde_json::to_string_pretty(&info)
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        let info = self.client.server_info().await.map_err(to_mcp_error)?;
+        let json = serde_json::to_string(&info).map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 }

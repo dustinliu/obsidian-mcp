@@ -13,7 +13,7 @@ pub struct ServerInfo {
 pub struct ObsidianClient {
     http: Client,
     base_url: String,
-    api_key: String,
+    bearer_token: String,
 }
 
 impl ObsidianClient {
@@ -23,10 +23,12 @@ impl ObsidianClient {
             .build()
             .expect("failed to build HTTP client");
 
+        let bearer_token = format!("Bearer {}", api_key);
+
         Self {
             http,
             base_url,
-            api_key,
+            bearer_token,
         }
     }
 
@@ -34,25 +36,24 @@ impl ObsidianClient {
         format!("{}{}", self.base_url, path)
     }
 
-    fn auth_header(&self) -> String {
-        format!("Bearer {}", self.api_key)
-    }
-
-    pub async fn server_info(&self) -> Result<ServerInfo, AppError> {
-        let resp = self
-            .http
-            .get(self.url("/"))
-            .header("Authorization", self.auth_header())
-            .send()
-            .await?;
-
+    async fn check_response(&self, resp: reqwest::Response) -> Result<reqwest::Response, AppError> {
         if !resp.status().is_success() {
             return Err(AppError::Api {
                 status: resp.status().as_u16(),
                 body: resp.text().await.unwrap_or_default(),
             });
         }
+        Ok(resp)
+    }
 
+    pub async fn server_info(&self) -> Result<ServerInfo, AppError> {
+        let resp = self
+            .http
+            .get(self.url("/"))
+            .header("Authorization", &self.bearer_token)
+            .send()
+            .await?;
+        let resp = self.check_response(resp).await?;
         Ok(resp.json().await?)
     }
 
@@ -60,18 +61,11 @@ impl ObsidianClient {
         let resp = self
             .http
             .get(self.url(&format!("/vault/{}", path)))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Accept", "text/markdown")
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        let resp = self.check_response(resp).await?;
         Ok(resp.text().await?)
     }
 
@@ -79,19 +73,12 @@ impl ObsidianClient {
         let resp = self
             .http
             .put(self.url(&format!("/vault/{}", path)))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Content-Type", "text/markdown")
             .body(content.to_string())
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        self.check_response(resp).await?;
         Ok(())
     }
 
@@ -99,19 +86,12 @@ impl ObsidianClient {
         let resp = self
             .http
             .post(self.url(&format!("/vault/{}", path)))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Content-Type", "text/markdown")
             .body(content.to_string())
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        self.check_response(resp).await?;
         Ok(())
     }
 
@@ -124,7 +104,7 @@ impl ObsidianClient {
         let mut req = self
             .http
             .patch(self.url(&format!("/vault/{}", path)))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Content-Type", "text/markdown");
 
         if let Some(heading) = heading {
@@ -132,14 +112,7 @@ impl ObsidianClient {
         }
 
         let resp = req.body(content.to_string()).send().await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        let resp = self.check_response(resp).await?;
         Ok(resp.text().await?)
     }
 
@@ -147,17 +120,10 @@ impl ObsidianClient {
         let resp = self
             .http
             .delete(self.url(&format!("/vault/{}", path)))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        self.check_response(resp).await?;
         Ok(())
     }
 
@@ -166,22 +132,14 @@ impl ObsidianClient {
             Some(p) => self.url(&format!("/vault/{}/", p)),
             None => self.url("/vault/"),
         };
-
         let resp = self
             .http
             .get(url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Accept", "application/json")
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        let resp = self.check_response(resp).await?;
         Ok(resp.json().await?)
     }
 
@@ -189,19 +147,12 @@ impl ObsidianClient {
         let resp = self
             .http
             .post(self.url("/search/simple/"))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Content-Type", "text/plain")
             .body(query.to_string())
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        let resp = self.check_response(resp).await?;
         Ok(resp.json().await?)
     }
 
@@ -209,19 +160,12 @@ impl ObsidianClient {
         let resp = self
             .http
             .post(self.url("/search/"))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Content-Type", "application/vnd.olrapi.dataview.dql+txt")
             .body(query.to_string())
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        let resp = self.check_response(resp).await?;
         Ok(resp.json().await?)
     }
 
@@ -229,17 +173,10 @@ impl ObsidianClient {
         let resp = self
             .http
             .get(self.url("/commands/"))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        let resp = self.check_response(resp).await?;
         Ok(resp.json().await?)
     }
 
@@ -247,17 +184,10 @@ impl ObsidianClient {
         let resp = self
             .http
             .post(self.url(&format!("/commands/{}/", command_id)))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        self.check_response(resp).await?;
         Ok(())
     }
 
@@ -265,17 +195,10 @@ impl ObsidianClient {
         let resp = self
             .http
             .post(self.url(&format!("/open/{}", filename)))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        self.check_response(resp).await?;
         Ok(())
     }
 
@@ -304,18 +227,11 @@ impl ObsidianClient {
         let resp = self
             .http
             .get(self.periodic_url(period, year, month, day))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Accept", "text/markdown")
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        let resp = self.check_response(resp).await?;
         Ok(resp.text().await?)
     }
 
@@ -330,19 +246,12 @@ impl ObsidianClient {
         let resp = self
             .http
             .put(self.periodic_url(period, year, month, day))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Content-Type", "text/markdown")
             .body(content.to_string())
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        self.check_response(resp).await?;
         Ok(())
     }
 
@@ -357,19 +266,12 @@ impl ObsidianClient {
         let resp = self
             .http
             .post(self.periodic_url(period, year, month, day))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Content-Type", "text/markdown")
             .body(content.to_string())
             .send()
             .await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        self.check_response(resp).await?;
         Ok(())
     }
 
@@ -385,7 +287,7 @@ impl ObsidianClient {
         let mut req = self
             .http
             .patch(self.periodic_url(period, year, month, day))
-            .header("Authorization", self.auth_header())
+            .header("Authorization", &self.bearer_token)
             .header("Content-Type", "text/markdown");
 
         if let Some(heading) = heading {
@@ -393,14 +295,7 @@ impl ObsidianClient {
         }
 
         let resp = req.body(content.to_string()).send().await?;
-
-        if !resp.status().is_success() {
-            return Err(AppError::Api {
-                status: resp.status().as_u16(),
-                body: resp.text().await.unwrap_or_default(),
-            });
-        }
-
+        let resp = self.check_response(resp).await?;
         Ok(resp.text().await?)
     }
 }
@@ -412,7 +307,10 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn make_client() -> ObsidianClient {
-        ObsidianClient::new("https://localhost:27124".to_string(), "test-api-key".to_string())
+        ObsidianClient::new(
+            "https://localhost:27124".to_string(),
+            "test-api-key".to_string(),
+        )
     }
 
     fn mock_client(uri: String) -> ObsidianClient {
@@ -422,13 +320,16 @@ mod tests {
     #[test]
     fn url_concatenates_base_and_path() {
         let client = make_client();
-        assert_eq!(client.url("/vault/test.md"), "https://localhost:27124/vault/test.md");
+        assert_eq!(
+            client.url("/vault/test.md"),
+            "https://localhost:27124/vault/test.md"
+        );
     }
 
     #[test]
-    fn auth_header_formats_bearer_token() {
+    fn bearer_token_formats_correctly() {
         let client = make_client();
-        assert_eq!(client.auth_header(), "Bearer test-api-key");
+        assert_eq!(client.bearer_token, "Bearer test-api-key");
     }
 
     #[test]
@@ -615,10 +516,7 @@ mod tests {
 
         let client = mock_client(server.uri());
         let result = client.list_files(Some("subdir")).await.unwrap();
-        assert_eq!(
-            result,
-            serde_json::json!({"files": ["subdir/c.md"]})
-        );
+        assert_eq!(result, serde_json::json!({"files": ["subdir/c.md"]}));
     }
 
     #[tokio::test]
@@ -630,8 +528,7 @@ mod tests {
             .and(header("Content-Type", "text/plain"))
             .and(body_string("my query"))
             .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(serde_json::json!([{"filename": "a.md"}])),
+                ResponseTemplate::new(200).set_body_json(serde_json::json!([{"filename": "a.md"}])),
             )
             .mount(&server)
             .await;
@@ -653,8 +550,7 @@ mod tests {
             ))
             .and(body_string("TABLE file.name FROM #tag"))
             .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(serde_json::json!({"results": []})),
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({"results": []})),
             )
             .mount(&server)
             .await;
@@ -673,10 +569,9 @@ mod tests {
         Mock::given(method("GET"))
             .and(path("/commands/"))
             .and(header("Authorization", "Bearer test-key"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(serde_json::json!({"commands": [{"id": "cmd1", "name": "Command 1"}]})),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({"commands": [{"id": "cmd1", "name": "Command 1"}]}),
+            ))
             .mount(&server)
             .await;
 
@@ -699,10 +594,7 @@ mod tests {
             .await;
 
         let client = mock_client(server.uri());
-        client
-            .execute_command("editor:toggle-bold")
-            .await
-            .unwrap();
+        client.execute_command("editor:toggle-bold").await.unwrap();
     }
 
     #[tokio::test]
