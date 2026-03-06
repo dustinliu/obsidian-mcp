@@ -1,0 +1,61 @@
+# =============================================================================
+# Build
+# =============================================================================
+
+[tasks.build]
+command = "cargo"
+args = ["build"]
+
+[tasks.build-release]
+command = "cargo"
+args = ["build", "--release"]
+
+[tasks.run]
+command = "cargo"
+args = ["run"]
+
+# =============================================================================
+# Quality
+# =============================================================================
+
+[tasks.fmt]
+command = "cargo"
+args = ["fmt"]
+
+[tasks.fmt-check]
+command = "cargo"
+args = ["fmt", "--check"]
+
+[tasks.clippy]
+command = "cargo"
+args = ["clippy", "--", "-D", "warnings"]
+
+[tasks.lint]
+dependencies = ["fmt-check", "clippy"]
+
+# =============================================================================
+# Test
+# =============================================================================
+
+[tasks.test]
+command = "cargo"
+args = ["test"]
+
+[tasks.test-verbose]
+command = "cargo"
+args = ["test", "--", "--nocapture"]
+
+[tasks.coverage]
+command = "cargo"
+args = ["llvm-cov", "--fail-under-lines", "85"]
+
+[tasks.coverage-report]
+command = "cargo"
+args = ["llvm-cov", "--html"]
+
+# =============================================================================
+# Composite
+# =============================================================================
+
+[tasks.check]
+dependencies = ["lint", "test", "build"]
