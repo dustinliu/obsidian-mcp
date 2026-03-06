@@ -276,3 +276,71 @@ async fn e2e_error_propagation() {
 
     client.cancel().await.unwrap();
 }
+
+#[tokio::test]
+async fn e2e_patch_note() {
+    let (mock, client, _cancel) = setup().await;
+
+    Mock::given(method("PATCH"))
+        .and(path("/vault/note.md"))
+        .and(header("Authorization", "Bearer test-key"))
+        .and(header("Content-Type", "text/markdown"))
+        .and(header("Operation", "append"))
+        .and(header("Target-Type", "heading"))
+        .and(header("Target", "Section 1"))
+        .and(body_string("appended text"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("done"))
+        .mount(&mock)
+        .await;
+
+    let result = call_tool(
+        &client,
+        "patch_note",
+        json!({
+            "path": "note.md",
+            "operation": "append",
+            "target_type": "heading",
+            "target": "Section 1",
+            "content": "appended text"
+        }),
+    )
+    .await;
+    assert_eq!(first_text(&result), "done");
+
+    client.cancel().await.unwrap();
+}
+
+#[tokio::test]
+async fn e2e_patch_periodic_note() {
+    let (mock, client, _cancel) = setup().await;
+
+    Mock::given(method("PATCH"))
+        .and(path("/periodic/daily/"))
+        .and(header("Authorization", "Bearer test-key"))
+        .and(header("Content-Type", "text/markdown"))
+        .and(header("Operation", "replace"))
+        .and(header("Target-Type", "frontmatter"))
+        .and(header("Target", "status"))
+        .and(header("Create-Target-If-Missing", "true"))
+        .and(body_string("done"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("updated"))
+        .mount(&mock)
+        .await;
+
+    let result = call_tool(
+        &client,
+        "patch_periodic_note",
+        json!({
+            "period": "daily",
+            "operation": "replace",
+            "target_type": "frontmatter",
+            "target": "status",
+            "create_target_if_missing": true,
+            "content": "done"
+        }),
+    )
+    .await;
+    assert_eq!(first_text(&result), "updated");
+
+    client.cancel().await.unwrap();
+}
