@@ -13,20 +13,25 @@ cargo make run                 # Run (pass args via CARGO_MAKE_CARGO_ARGS)
 cargo make fmt                 # Format
 cargo make clippy              # Lint (warnings as errors)
 cargo make lint                # fmt-check + clippy
-cargo make check               # lint + build
+cargo make test                # Run all tests
+cargo make test-verbose        # Run tests with output
+cargo make coverage            # Run tests with ≥85% line coverage threshold
+cargo make coverage-report     # Generate HTML coverage report
+cargo make check               # lint + test + build
 ```
 
-No tests exist yet. The project requires a running Obsidian instance with the Local REST API plugin for integration testing.
+Tests use wiremock to mock the Obsidian REST API. Unit tests live in `src/client.rs` and `src/server.rs`; e2e MCP tests live in `tests/integration_test.rs` (exercises the full MCP stack: MCP client → HTTP → Axum → ObsidianServer → ObsidianClient → wiremock).
 
 ## Architecture
 
 This is an MCP (Model Context Protocol) server that bridges AI assistants to Obsidian vaults via the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin. It uses Streamable HTTP transport (not stdio).
 
-**Three source files, three concerns:**
+**Source files:**
 
+- `src/lib.rs` — Re-exports `client`, `error`, and `server` as public modules.
 - `src/main.rs` — CLI parsing (clap), Axum HTTP server setup, MCP transport wiring. The MCP endpoint is mounted at `/mcp`.
-- `src/server.rs` — `ObsidianServer` implements `ServerHandler` from the `rmcp` crate. All 16 MCP tools are defined here using `#[tool]` / `#[tool_router]` / `#[tool_handler]` proc macros. Each tool method deserializes args from a `Parameters<T>` wrapper where `T` is a `Deserialize + JsonSchema` struct defined in the same file.
-- `src/client.rs` — `ObsidianClient` wraps `reqwest::Client` to call the Obsidian REST API. Maps HTTP methods to vault operations (GET=read, PUT=create, POST=append, PATCH=partial update, DELETE=delete). Accepts invalid TLS certs since Obsidian's local API uses self-signed certs.
+- `src/server.rs` — `ObsidianServer` implements `ServerHandler` from the `rmcp` crate. All 16 MCP tools are defined here using `#[tool]` / `#[tool_router]` / `#[tool_handler]` proc macros. Each tool method deserializes args from a `Parameters<T>` wrapper where `T` is a `Deserialize + JsonSchema` struct defined in the same file. Uses `to_mcp_error()` helper to convert errors.
+- `src/client.rs` — `ObsidianClient` wraps `reqwest::Client` to call the Obsidian REST API. Maps HTTP methods to vault operations (GET=read, PUT=create, POST=append, PATCH=partial update, DELETE=delete). Accepts invalid TLS certs since Obsidian's local API uses self-signed certs. Bearer token is pre-formatted in the constructor; uses `check_response()` helper to deduplicate error handling.
 - `src/error.rs` — `AppError` enum using `thiserror`.
 
 **Key dependencies:** `rmcp` (MCP protocol SDK with macros), `axum` (HTTP server), `reqwest` (HTTP client), `clap` (CLI), `schemars` (JSON Schema generation for tool args).
