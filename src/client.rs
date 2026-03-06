@@ -759,7 +759,14 @@ mod tests {
             create_target_if_missing: None,
         };
         let result = client
-            .patch_periodic_note("daily", Some(2026), Some(3), Some(6), &params, "- [ ] do thing")
+            .patch_periodic_note(
+                "daily",
+                Some(2026),
+                Some(3),
+                Some(6),
+                &params,
+                "- [ ] do thing",
+            )
             .await
             .unwrap();
         assert_eq!(result, "patched daily");

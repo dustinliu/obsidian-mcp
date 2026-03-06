@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::client::ObsidianClient;
+use crate::types::{Operation, PatchParams, TargetType};
 
 fn to_mcp_error(e: impl std::fmt::Display) -> McpError {
     McpError::internal_error(e.to_string(), None)
@@ -47,9 +48,19 @@ pub struct AppendNoteArgs {
 pub struct PatchNoteArgs {
     /// Path to the note to patch
     pub path: String,
-    /// Target heading to patch under (optional)
-    pub heading: Option<String>,
-    /// New content for the target section
+    /// Patch operation: "append", "prepend", or "replace"
+    pub operation: Operation,
+    /// Target type: "heading", "block", or "frontmatter"
+    pub target_type: TargetType,
+    /// Target identifier (heading name, block reference ID, or frontmatter field name)
+    pub target: String,
+    /// Delimiter for nested targets like headings (default: "::")
+    pub target_delimiter: Option<String>,
+    /// Trim whitespace from target before applying patch
+    pub trim_target_whitespace: Option<bool>,
+    /// Create the target if it doesn't exist (useful for frontmatter)
+    pub create_target_if_missing: Option<bool>,
+    /// Content to insert at the target location
     pub content: String,
 }
 
@@ -133,9 +144,19 @@ pub struct PatchPeriodicNoteArgs {
     pub month: Option<u32>,
     /// Day (optional)
     pub day: Option<u32>,
-    /// Target heading to patch under (optional)
-    pub heading: Option<String>,
-    /// New content for the target section
+    /// Patch operation: "append", "prepend", or "replace"
+    pub operation: Operation,
+    /// Target type: "heading", "block", or "frontmatter"
+    pub target_type: TargetType,
+    /// Target identifier (heading name, block reference ID, or frontmatter field name)
+    pub target: String,
+    /// Delimiter for nested targets like headings (default: "::")
+    pub target_delimiter: Option<String>,
+    /// Trim whitespace from target before applying patch
+    pub trim_target_whitespace: Option<bool>,
+    /// Create the target if it doesn't exist (useful for frontmatter)
+    pub create_target_if_missing: Option<bool>,
+    /// Content to insert at the target location
     pub content: String,
 }
 
@@ -193,14 +214,24 @@ impl ObsidianServer {
         ))]))
     }
 
-    #[tool(description = "Partially update a note relative to a heading or frontmatter field")]
+    #[tool(
+        description = "Partially update a note relative to a heading, block reference, or frontmatter field"
+    )]
     async fn patch_note(
         &self,
         Parameters(args): Parameters<PatchNoteArgs>,
     ) -> Result<CallToolResult, McpError> {
+        let params = PatchParams {
+            operation: args.operation,
+            target_type: args.target_type,
+            target: args.target,
+            target_delimiter: args.target_delimiter,
+            trim_target_whitespace: args.trim_target_whitespace,
+            create_target_if_missing: args.create_target_if_missing,
+        };
         let result = self
             .client
-            .patch_note(&args.path, args.heading.as_deref(), &args.content)
+            .patch_note(&args.path, &params, &args.content)
             .await
             .map_err(to_mcp_error)?;
         Ok(CallToolResult::success(vec![Content::text(result)]))
@@ -343,11 +374,21 @@ impl ObsidianServer {
         ))]))
     }
 
-    #[tool(description = "Partially update a periodic note relative to a heading")]
+    #[tool(
+        description = "Partially update a periodic note relative to a heading, block reference, or frontmatter field"
+    )]
     async fn patch_periodic_note(
         &self,
         Parameters(args): Parameters<PatchPeriodicNoteArgs>,
     ) -> Result<CallToolResult, McpError> {
+        let params = PatchParams {
+            operation: args.operation,
+            target_type: args.target_type,
+            target: args.target,
+            target_delimiter: args.target_delimiter,
+            trim_target_whitespace: args.trim_target_whitespace,
+            create_target_if_missing: args.create_target_if_missing,
+        };
         let result = self
             .client
             .patch_periodic_note(
@@ -355,7 +396,7 @@ impl ObsidianServer {
                 args.year,
                 args.month,
                 args.day,
-                args.heading.as_deref(),
+                &params,
                 &args.content,
             )
             .await
