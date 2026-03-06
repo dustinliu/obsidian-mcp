@@ -2,6 +2,7 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use crate::error::AppError;
+use crate::types::PatchParams;
 
 #[derive(Debug, Deserialize, serde::Serialize)]
 pub struct ServerInfo {
@@ -98,17 +99,26 @@ impl ObsidianClient {
     pub async fn patch_note(
         &self,
         path: &str,
-        heading: Option<&str>,
+        params: &PatchParams,
         content: &str,
     ) -> Result<String, AppError> {
         let mut req = self
             .http
             .patch(self.url(&format!("/vault/{}", path)))
             .header("Authorization", &self.bearer_token)
-            .header("Content-Type", "text/markdown");
+            .header("Content-Type", "text/markdown")
+            .header("Operation", params.operation.to_string())
+            .header("Target-Type", params.target_type.to_string())
+            .header("Target", &params.target);
 
-        if let Some(heading) = heading {
-            req = req.header("X-Heading", heading);
+        if let Some(ref delimiter) = params.target_delimiter {
+            req = req.header("Target-Delimiter", delimiter);
+        }
+        if let Some(trim) = params.trim_target_whitespace {
+            req = req.header("Trim-Target-Whitespace", trim.to_string());
+        }
+        if let Some(create) = params.create_target_if_missing {
+            req = req.header("Create-Target-If-Missing", create.to_string());
         }
 
         let resp = req.body(content.to_string()).send().await?;
@@ -303,6 +313,7 @@ impl ObsidianClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{Operation, PatchParams, TargetType};
     use wiremock::matchers::{body_string, header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -430,41 +441,68 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn patch_note_without_heading() {
+    async fn patch_note_sends_v3_headers() {
         let server = MockServer::start().await;
         Mock::given(method("PATCH"))
             .and(path("/vault/note.md"))
             .and(header("Authorization", "Bearer test-key"))
             .and(header("Content-Type", "text/markdown"))
-            .and(body_string("patched"))
-            .respond_with(ResponseTemplate::new(200).set_body_string("updated content"))
+            .and(header("Operation", "append"))
+            .and(header("Target-Type", "heading"))
+            .and(header("Target", "Introduction"))
+            .and(body_string("new content"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
             .mount(&server)
             .await;
 
         let client = mock_client(server.uri());
-        let result = client.patch_note("note.md", None, "patched").await.unwrap();
-        assert_eq!(result, "updated content");
+        let params = PatchParams {
+            operation: Operation::Append,
+            target_type: TargetType::Heading,
+            target: "Introduction".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+        };
+        let result = client
+            .patch_note("note.md", &params, "new content")
+            .await
+            .unwrap();
+        assert_eq!(result, "ok");
     }
 
     #[tokio::test]
-    async fn patch_note_with_heading() {
+    async fn patch_note_sends_optional_headers() {
         let server = MockServer::start().await;
         Mock::given(method("PATCH"))
             .and(path("/vault/note.md"))
             .and(header("Authorization", "Bearer test-key"))
             .and(header("Content-Type", "text/markdown"))
-            .and(header("X-Heading", "Introduction"))
-            .and(body_string("new section"))
-            .respond_with(ResponseTemplate::new(200).set_body_string("updated"))
+            .and(header("Operation", "replace"))
+            .and(header("Target-Type", "frontmatter"))
+            .and(header("Target", "tags"))
+            .and(header("Target-Delimiter", "/"))
+            .and(header("Trim-Target-Whitespace", "true"))
+            .and(header("Create-Target-If-Missing", "true"))
+            .and(body_string("new-tag"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
             .mount(&server)
             .await;
 
         let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Replace,
+            target_type: TargetType::Frontmatter,
+            target: "tags".to_string(),
+            target_delimiter: Some("/".to_string()),
+            trim_target_whitespace: Some(true),
+            create_target_if_missing: Some(true),
+        };
         let result = client
-            .patch_note("note.md", Some("Introduction"), "new section")
+            .patch_note("note.md", &params, "new-tag")
             .await
             .unwrap();
-        assert_eq!(result, "updated");
+        assert_eq!(result, "ok");
     }
 
     #[tokio::test]
