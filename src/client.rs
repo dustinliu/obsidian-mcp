@@ -291,17 +291,26 @@ impl ObsidianClient {
         year: Option<u32>,
         month: Option<u32>,
         day: Option<u32>,
-        heading: Option<&str>,
+        params: &PatchParams,
         content: &str,
     ) -> Result<String, AppError> {
         let mut req = self
             .http
             .patch(self.periodic_url(period, year, month, day))
             .header("Authorization", &self.bearer_token)
-            .header("Content-Type", "text/markdown");
+            .header("Content-Type", "text/markdown")
+            .header("Operation", params.operation.to_string())
+            .header("Target-Type", params.target_type.to_string())
+            .header("Target", &params.target);
 
-        if let Some(heading) = heading {
-            req = req.header("X-Heading", heading);
+        if let Some(ref delimiter) = params.target_delimiter {
+            req = req.header("Target-Delimiter", delimiter);
+        }
+        if let Some(trim) = params.trim_target_whitespace {
+            req = req.header("Trim-Target-Whitespace", trim.to_string());
+        }
+        if let Some(create) = params.create_target_if_missing {
+            req = req.header("Create-Target-If-Missing", create.to_string());
         }
 
         let resp = req.body(content.to_string()).send().await?;
@@ -726,51 +735,65 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn patch_periodic_note_with_heading() {
+    async fn patch_periodic_note_sends_v3_headers() {
         let server = MockServer::start().await;
         Mock::given(method("PATCH"))
             .and(path("/periodic/daily/2026/3/6/"))
             .and(header("Authorization", "Bearer test-key"))
             .and(header("Content-Type", "text/markdown"))
-            .and(header("X-Heading", "Tasks"))
+            .and(header("Operation", "append"))
+            .and(header("Target-Type", "heading"))
+            .and(header("Target", "Tasks"))
             .and(body_string("- [ ] do thing"))
             .respond_with(ResponseTemplate::new(200).set_body_string("patched daily"))
             .mount(&server)
             .await;
 
         let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Append,
+            target_type: TargetType::Heading,
+            target: "Tasks".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+        };
         let result = client
-            .patch_periodic_note(
-                "daily",
-                Some(2026),
-                Some(3),
-                Some(6),
-                Some("Tasks"),
-                "- [ ] do thing",
-            )
+            .patch_periodic_note("daily", Some(2026), Some(3), Some(6), &params, "- [ ] do thing")
             .await
             .unwrap();
         assert_eq!(result, "patched daily");
     }
 
     #[tokio::test]
-    async fn patch_periodic_note_without_heading() {
+    async fn patch_periodic_note_without_date() {
         let server = MockServer::start().await;
         Mock::given(method("PATCH"))
             .and(path("/periodic/monthly/"))
             .and(header("Authorization", "Bearer test-key"))
             .and(header("Content-Type", "text/markdown"))
-            .and(body_string("full replace"))
-            .respond_with(ResponseTemplate::new(200).set_body_string("replaced"))
+            .and(header("Operation", "replace"))
+            .and(header("Target-Type", "block"))
+            .and(header("Target", "abc123"))
+            .and(body_string("replaced"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
             .mount(&server)
             .await;
 
         let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Replace,
+            target_type: TargetType::Block,
+            target: "abc123".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+        };
         let result = client
-            .patch_periodic_note("monthly", None, None, None, None, "full replace")
+            .patch_periodic_note("monthly", None, None, None, &params, "replaced")
             .await
             .unwrap();
-        assert_eq!(result, "replaced");
+        assert_eq!(result, "ok");
     }
 
     // ---- error case (one representative test) ----
