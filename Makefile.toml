@@ -45,11 +45,17 @@ args = ["test"]
 command = "cargo"
 args = ["test", "--", "--nocapture"]
 
+[tasks.e2e]
+command = "cargo"
+args = ["test", "--test", "integration_test", "--", "--test-threads=1", "--nocapture"]
+
 [tasks.coverage]
+clear = true
 command = "cargo"
 args = ["llvm-cov", "--fail-under-lines", "85"]
 
 [tasks.coverage-report]
+clear = true
 command = "cargo"
 args = ["llvm-cov", "--html"]
 

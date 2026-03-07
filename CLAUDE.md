@@ -15,12 +15,13 @@ cargo make clippy              # Lint (warnings as errors)
 cargo make lint                # fmt-check + clippy
 cargo make test                # Run all tests
 cargo make test-verbose        # Run tests with output
+cargo make e2e                 # Run e2e tests (requires OBSIDIAN_API_KEY, see docs/e2e-testing.md)
 cargo make coverage            # Run tests with ≥85% line coverage threshold
 cargo make coverage-report     # Generate HTML coverage report
 cargo make check               # lint + test + build
 ```
 
-Tests use wiremock to mock the Obsidian REST API. Unit tests live in `src/client.rs` and `src/server.rs`; e2e MCP tests live in `tests/integration_test.rs` (exercises the full MCP stack: MCP client → HTTP → Axum → ObsidianServer → ObsidianClient → wiremock).
+Unit tests in `src/client.rs` and `src/server.rs` use wiremock to mock the Obsidian REST API. E2e tests in `tests/integration_test.rs` run against the real Obsidian Local REST API (see `docs/e2e-testing.md` for prerequisites).
 
 ## Architecture
 
