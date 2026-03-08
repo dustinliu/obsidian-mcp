@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 
 use obsidian_mcp::client::ObsidianClient;
 use obsidian_mcp::server::ObsidianServer;
@@ -13,17 +13,29 @@ use rmcp::transport::streamable_http_server::tower::{
 };
 use rmcp::{RoleClient, ServiceExt};
 use serde_json::json;
+use serial_test::serial;
 use tokio_util::sync::CancellationToken;
 
 const DEFAULT_OBSIDIAN_API_URL: &str = "https://127.0.0.1:27124";
 const TEST_FOLDER: &str = "tests";
 
+static INIT_DOTENV: Once = Once::new();
+
+/// Load `.env` file once (no-op if the file doesn't exist).
+fn init_dotenv() {
+    INIT_DOTENV.call_once(|| {
+        let _ = dotenvy::dotenv();
+    });
+}
+
 fn obsidian_api_url() -> String {
+    init_dotenv();
     std::env::var("OBSIDIAN_API_URL").unwrap_or_else(|_| DEFAULT_OBSIDIAN_API_URL.to_string())
 }
 
 /// Read the API key from the OBSIDIAN_API_KEY environment variable.
 fn api_key() -> Option<String> {
+    init_dotenv();
     std::env::var("OBSIDIAN_API_KEY").ok()
 }
 
@@ -369,14 +381,13 @@ async fn e2e_search() {
     let (client, cancel, raw) = setup(&key).await;
     cleanup(&raw).await;
 
-    // NOTE: The Obsidian Local REST API /search/simple/ endpoint expects
-    // `?query=` as a URL parameter, but our client sends the query in the
-    // request body. This is a known client bug that causes a 400 error.
-    // For now, we verify the MCP stack correctly propagates the API error.
-    let err = try_call_tool(&client, "search", json!({"query": "test"})).await;
+    let result = call_tool(&client, "search", json!({"query": "test"})).await;
+    let text = first_text(&result);
+    let parsed: serde_json::Value = serde_json::from_str(text).unwrap();
     assert!(
-        err.is_err(),
-        "expected error from search due to client sending query in body instead of URL param"
+        parsed.is_array(),
+        "search result should be JSON array, got: {}",
+        text
     );
 
     cancel.cancel();
@@ -502,6 +513,7 @@ async fn e2e_open_file() {
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
+#[serial(daily_note)]
 async fn e2e_periodic_note_crud() {
     let key = require_api_key!();
     let (client, cancel, raw) = setup(&key).await;
@@ -564,6 +576,7 @@ async fn e2e_periodic_note_crud() {
 }
 
 #[tokio::test]
+#[serial(daily_note)]
 async fn e2e_patch_periodic_note() {
     let key = require_api_key!();
     let (client, cancel, raw) = setup(&key).await;

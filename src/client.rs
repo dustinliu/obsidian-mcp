@@ -158,8 +158,7 @@ impl ObsidianClient {
             .http
             .post(self.url("/search/simple/"))
             .header("Authorization", &self.bearer_token)
-            .header("Content-Type", "text/plain")
-            .body(query.to_string())
+            .query(&[("query", query)])
             .send()
             .await?;
         let resp = self.check_response(resp).await?;
@@ -323,7 +322,7 @@ impl ObsidianClient {
 mod tests {
     use super::*;
     use crate::types::{Operation, PatchParams, TargetType};
-    use wiremock::matchers::{body_string, header, method, path};
+    use wiremock::matchers::{body_string, header, method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn make_client() -> ObsidianClient {
@@ -572,8 +571,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/search/simple/"))
             .and(header("Authorization", "Bearer test-key"))
-            .and(header("Content-Type", "text/plain"))
-            .and(body_string("my query"))
+            .and(query_param("query", "my query"))
             .respond_with(
                 ResponseTemplate::new(200).set_body_json(serde_json::json!([{"filename": "a.md"}])),
             )

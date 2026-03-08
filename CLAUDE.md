@@ -4,24 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Run
 
-Uses [cargo-make](https://github.com/sagiegurari/cargo-make) for task orchestration.
+Uses [just](https://github.com/casey/just) for task orchestration.
 
 ```bash
-cargo make build               # Debug build
-cargo make build-release       # Release build
-cargo make run                 # Run (pass args via CARGO_MAKE_CARGO_ARGS)
-cargo make fmt                 # Format
-cargo make clippy              # Lint (warnings as errors)
-cargo make lint                # fmt-check + clippy
-cargo make test                # Run all tests
-cargo make test-verbose        # Run tests with output
-cargo make e2e                 # Run e2e tests (requires OBSIDIAN_API_KEY, see docs/e2e-testing.md)
-cargo make coverage            # Run tests with ≥85% line coverage threshold
-cargo make coverage-report     # Generate HTML coverage report
-cargo make check               # lint + test + build
+just build               # Debug build
+just build-release       # Release build (runs test + lint + build first via __check)
+just run                 # Run (pass extra args after --)
+just fmt                 # Format
+just clippy              # Lint (warnings as errors)
+just lint                # fmt-check + clippy
+just test                # Run all tests
+just test-verbose        # Run tests with output
+just e2e                 # Run e2e tests (requires OBSIDIAN_API_KEY, see docs/e2e-testing.md)
+just coverage            # Run tests with ≥85% line coverage threshold
+just coverage-report     # Generate HTML coverage report
 ```
 
-Unit tests in `src/client.rs` and `src/server.rs` use wiremock to mock the Obsidian REST API. E2e tests in `tests/integration_test.rs` run against the real Obsidian Local REST API (see `docs/e2e-testing.md` for prerequisites).
+Unit tests in `src/client.rs` use wiremock to mock the Obsidian REST API; `src/types.rs` has unit tests for shared types. E2e tests in `tests/integration_test.rs` run against the real Obsidian Local REST API (see `docs/e2e-testing.md` for prerequisites).
 
 ## Architecture
 
@@ -29,10 +28,11 @@ This is an MCP (Model Context Protocol) server that bridges AI assistants to Obs
 
 **Source files:**
 
-- `src/lib.rs` — Re-exports `client`, `error`, and `server` as public modules.
+- `src/lib.rs` — Re-exports `client`, `error`, `server`, and `types` as public modules.
 - `src/main.rs` — CLI parsing (clap), Axum HTTP server setup, MCP transport wiring. The MCP endpoint is mounted at `/mcp`.
-- `src/server.rs` — `ObsidianServer` implements `ServerHandler` from the `rmcp` crate. All 16 MCP tools are defined here using `#[tool]` / `#[tool_router]` / `#[tool_handler]` proc macros. Each tool method deserializes args from a `Parameters<T>` wrapper where `T` is a `Deserialize + JsonSchema` struct defined in the same file. Uses `to_mcp_error()` helper to convert errors.
+- `src/server.rs` — `ObsidianServer` implements `ServerHandler` from the `rmcp` crate. All 16 MCP tools are defined here using `#[tool]` / `#[tool_router]` / `#[tool_handler]` proc macros. Each tool method deserializes args from a `Parameters<T>` wrapper where `T` is a `Deserialize + JsonSchema` struct defined in the same file (or in `types.rs` for shared types). Uses `to_mcp_error()` helper to convert errors.
 - `src/client.rs` — `ObsidianClient` wraps `reqwest::Client` to call the Obsidian REST API. Maps HTTP methods to vault operations (GET=read, PUT=create, POST=append, PATCH=partial update, DELETE=delete). Accepts invalid TLS certs since Obsidian's local API uses self-signed certs. Bearer token is pre-formatted in the constructor; uses `check_response()` helper to deduplicate error handling.
+- `src/types.rs` — Shared types for the v3 PATCH API: `Operation` (append/prepend/replace), `TargetType` (heading/block/frontmatter), and `PatchParams`.
 - `src/error.rs` — `AppError` enum using `thiserror`.
 
 **Key dependencies:** `rmcp` (MCP protocol SDK with macros), `axum` (HTTP server), `reqwest` (HTTP client), `clap` (CLI), `schemars` (JSON Schema generation for tool args).

@@ -24,4 +24,6 @@ tokio-util = "0.7"
 
 [dev-dependencies]
 wiremock = "0.6"
+dotenvy = "0.15"
 rmcp = { version = "0.12", features = ["client", "transport-streamable-http-client-reqwest"] }
+serial_test = "3.4.0"
