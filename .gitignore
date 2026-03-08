@@ -26,3 +26,4 @@ debug
 
 .devenv
 tmp/
+.env

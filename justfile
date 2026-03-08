@@ -32,10 +32,10 @@ clippy:
 [group('quality')]
 lint: fmt-check clippy
 
-# Run all tests
+# Run unit tests
 [group('test')]
-test:
-    cargo test
+unit-test:
+    cargo test --lib
 
 # Run tests with output
 [group('test')]
@@ -64,4 +64,8 @@ clean:
 
 # lint + test + build
 [group('composite')]
-__check: test lint build
+__check: unit-test lint e2e coverage build
+
+[group('deploy')]
+deploy: build-release
+    cp target/release/obsidian-mcp ~/.local/bin
