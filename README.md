@@ -39,7 +39,7 @@ Connect your MCP client to `http://127.0.0.1:3000/mcp`.
 | `read_note` | Read the content of a note |
 | `create_note` | Create a new note or overwrite an existing one |
 | `append_note` | Append content to an existing note |
-| `patch_note` | Partially update a note relative to a heading |
+| `patch_note` | Partially update a note relative to a heading, block reference, or frontmatter field |
 | `delete_note` | Delete a note from the vault |
 | `list_files` | List files in a vault directory |
 | `search` | Search notes by text query |
@@ -50,7 +50,7 @@ Connect your MCP client to `http://127.0.0.1:3000/mcp`.
 | `get_periodic_note` | Read a periodic note |
 | `update_periodic_note` | Replace the content of a periodic note |
 | `append_periodic_note` | Append content to a periodic note |
-| `patch_periodic_note` | Partially update a periodic note |
+| `patch_periodic_note` | Partially update a periodic note relative to a heading, block reference, or frontmatter field |
 | `server_info` | Get Obsidian API server status |
 
 ## License

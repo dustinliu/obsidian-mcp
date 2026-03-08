@@ -8,19 +8,21 @@ Uses [just](https://github.com/casey/just) for task orchestration.
 
 ```bash
 just build               # Debug build
-just build-release       # Release build (runs test + lint + build first via __check)
+just build-release       # Release build (runs unit-test + lint + e2e + coverage + build first via __check)
 just run                 # Run (pass extra args after --)
 just fmt                 # Format
 just clippy              # Lint (warnings as errors)
 just lint                # fmt-check + clippy
-just test                # Run all tests
+just unit-test           # Run unit tests
 just test-verbose        # Run tests with output
 just e2e                 # Run e2e tests (requires OBSIDIAN_API_KEY, see docs/e2e-testing.md)
 just coverage            # Run tests with ≥85% line coverage threshold
 just coverage-report     # Generate HTML coverage report
+just clean               # Clean build artifacts
+just deploy              # build-release + copy to ~/.local/bin
 ```
 
-Unit tests in `src/client.rs` use wiremock to mock the Obsidian REST API; `src/types.rs` has unit tests for shared types. E2e tests in `tests/integration_test.rs` run against the real Obsidian Local REST API (see `docs/e2e-testing.md` for prerequisites).
+Unit tests in `src/client.rs` use wiremock to mock the Obsidian REST API; `src/types.rs` and `src/error.rs` have unit tests for shared types and error handling. E2e tests in `tests/integration_test.rs` run against the real Obsidian Local REST API (see `docs/e2e-testing.md` for prerequisites).
 
 ## Architecture
 
