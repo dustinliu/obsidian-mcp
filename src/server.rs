@@ -280,11 +280,20 @@ impl ObsidianServer {
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
-    #[tool(description = "Search notes using Dataview DQL query")]
+    #[tool(
+        description = "Search notes using Dataview DQL query. Only TABLE queries are supported (e.g. 'TABLE file.ctime FROM \"folder\"'). LIST and TASK query types are not supported by the Obsidian Local REST API."
+    )]
     async fn search_query(
         &self,
         Parameters(args): Parameters<SearchArgs>,
     ) -> Result<CallToolResult, McpError> {
+        let trimmed = args.query.trim_start();
+        if !trimmed.starts_with("TABLE") {
+            return Err(McpError::invalid_params(
+                "Only TABLE queries are supported. LIST and TASK query types are not supported by the Obsidian Local REST API.",
+                None,
+            ));
+        }
         let result = self
             .client
             .search_query(&args.query)
