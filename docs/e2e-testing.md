@@ -23,10 +23,10 @@ If `OBSIDIAN_API_KEY` is not set, all e2e tests are **skipped** (not failed).
 
 ```bash
 # On macOS host (default URL works)
-OBSIDIAN_API_KEY="your-api-key-here" cargo make e2e
+OBSIDIAN_API_KEY="your-api-key-here" just e2e
 
 # In OrbStack container (override URL to reach host)
-OBSIDIAN_API_URL=https://host.orb.internal:27124 OBSIDIAN_API_KEY="your-api-key-here" cargo make e2e
+OBSIDIAN_API_URL=https://host.orb.internal:27124 OBSIDIAN_API_KEY="your-api-key-here" just e2e
 ```
 
 ## Test Isolation
@@ -41,3 +41,7 @@ OBSIDIAN_API_URL=https://host.orb.internal:27124 OBSIDIAN_API_KEY="your-api-key-
 - **Tests skip silently:** Check that `OBSIDIAN_API_KEY` is set in the command.
 - **Connection refused:** Ensure Obsidian is running and the Local REST API plugin is enabled.
 - **TLS errors:** The test client accepts self-signed certificates (Obsidian uses self-signed TLS).
+
+## Note: `cargo release` Pre-Release Hook
+
+The `release.toml` pre-release-hook runs `just __check`, which includes e2e tests. This means **a live Obsidian instance with the Local REST API is required** when running `just release` or `cargo release`. If Obsidian is not running, the release will fail at the e2e step.

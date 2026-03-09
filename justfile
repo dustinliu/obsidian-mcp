@@ -47,25 +47,34 @@ test-verbose:
 e2e:
     cargo test --test integration_test -- --test-threads=1 --nocapture
 
-# Run tests with ≥85% line coverage threshold
+# Run unit tests (--lib) with ≥85% line coverage threshold
 [group('test')]
 coverage:
-    cargo llvm-cov --fail-under-lines 85
+    cargo llvm-cov --lib --fail-under-lines 85
 
-# Generate HTML coverage report
+# Generate HTML unit test (--lib) coverage report
 [group('test')]
 coverage-report:
-    cargo llvm-cov --html
+    cargo llvm-cov --lib --html
 
 # Clean build artifacts
 [group('build')]
 clean:
     cargo clean
 
-# lint + test + build
+# Full pre-release checks: unit-test, lint, e2e, coverage, build
 [group('composite')]
 __check: unit-test lint e2e coverage build
+
+# CI-only checks (no e2e)
+[group('composite')]
+__ci-check: unit-test lint coverage build
 
 [group('deploy')]
 deploy: build-release
     cp target/release/obsidian-mcp ~/.local/bin
+
+# Release using cargo-release (e.g., just release patch)
+[group('deploy')]
+release level="patch":
+    cargo release {{level}}
