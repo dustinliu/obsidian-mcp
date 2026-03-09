@@ -935,9 +935,7 @@ mod tests {
         let mock = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/vault/note.md"))
-            .respond_with(
-                ResponseTemplate::new(500).set_body_string("internal server error"),
-            )
+            .respond_with(ResponseTemplate::new(500).set_body_string("internal server error"))
             .mount(&mock)
             .await;
 
@@ -956,9 +954,7 @@ mod tests {
         let mock = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/vault/"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_string("this is not json"),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_string("this is not json"))
             .mount(&mock)
             .await;
 
