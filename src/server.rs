@@ -698,6 +698,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn search_query_rejects_task_queries() {
+        let mock = MockServer::start().await;
+        let server = make_server(&mock).await;
+        let err = server
+            .search_query(Parameters(SearchArgs {
+                query: "TASK FROM \"folder\"".to_string(),
+            }))
+            .await
+            .unwrap_err();
+        assert!(err.message.contains("Only TABLE queries"));
+    }
+
+    #[tokio::test]
+    async fn search_query_rejects_lowercase_table() {
+        let mock = MockServer::start().await;
+        let server = make_server(&mock).await;
+        let err = server
+            .search_query(Parameters(SearchArgs {
+                query: "table file.ctime FROM \"folder\"".to_string(),
+            }))
+            .await
+            .unwrap_err();
+        assert!(err.message.contains("Only TABLE queries"));
+    }
+
+    #[tokio::test]
+    async fn search_query_accepts_leading_whitespace() {
+        let mock = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/search/"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&mock)
+            .await;
+
+        let server = make_server(&mock).await;
+        let result = server
+            .search_query(Parameters(SearchArgs {
+                query: "  TABLE file.ctime FROM \"folder\"".to_string(),
+            }))
+            .await
+            .unwrap();
+        assert_eq!(text_content(&result), "[]");
+    }
+
+    #[tokio::test]
     async fn list_commands_returns_json() {
         let mock = MockServer::start().await;
         Mock::given(method("GET"))
@@ -883,5 +928,48 @@ mod tests {
             .await
             .unwrap_err();
         assert!(err.message.contains("404"));
+    }
+
+    #[tokio::test]
+    async fn tool_returns_error_on_500() {
+        let mock = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/vault/note.md"))
+            .respond_with(
+                ResponseTemplate::new(500).set_body_string("internal server error"),
+            )
+            .mount(&mock)
+            .await;
+
+        let server = make_server(&mock).await;
+        let err = server
+            .read_note(Parameters(ReadNoteArgs {
+                path: "note.md".to_string(),
+            }))
+            .await
+            .unwrap_err();
+        assert!(err.message.contains("500"));
+    }
+
+    #[tokio::test]
+    async fn tool_returns_error_on_malformed_json() {
+        let mock = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/vault/"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_string("this is not json"),
+            )
+            .mount(&mock)
+            .await;
+
+        let server = make_server(&mock).await;
+        let err = server
+            .list_files(Parameters(ListFilesArgs { path: None }))
+            .await
+            .unwrap_err();
+        assert!(
+            !err.message.is_empty(),
+            "expected a non-empty error message for malformed JSON"
+        );
     }
 }
