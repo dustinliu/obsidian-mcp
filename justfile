@@ -1,4 +1,4 @@
-# Run the server
+# Run the server (stdio by default; use -- --transport http for HTTP)
 [group('build')]
 run *ARGS:
     uv run obsidian-mcp {{ARGS}}

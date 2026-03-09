@@ -24,12 +24,12 @@ Unit tests in `tests/test_client.py` use respx to mock the Obsidian REST API; `t
 
 ## Architecture
 
-This is an MCP (Model Context Protocol) server that bridges AI assistants to Obsidian vaults via the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin. It uses Streamable HTTP transport (not stdio).
+This is an MCP (Model Context Protocol) server that bridges AI assistants to Obsidian vaults via the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin. It supports both stdio (default) and Streamable HTTP transport, selectable via `--transport`.
 
 **Source files:**
 
 - `src/obsidian_mcp/__init__.py` — Package marker.
-- `src/obsidian_mcp/__main__.py` — CLI entrypoint (click), server startup, connectivity check. The MCP endpoint is mounted at `/mcp`.
+- `src/obsidian_mcp/__main__.py` — CLI entrypoint (click), server startup, connectivity check. Supports `--transport stdio` (default) and `--transport http` (mounts MCP endpoint at `/mcp`).
 - `src/obsidian_mcp/server.py` — FastMCP server instance with all 16 MCP tools defined using `@mcp.tool()` decorators. Tool arguments are plain Python type hints (auto-generates JSON Schema via Pydantic).
 - `src/obsidian_mcp/client.py` — `ObsidianClient` wraps `httpx.AsyncClient` to call the Obsidian REST API. Maps HTTP methods to vault operations (GET=read, PUT=create, POST=append, PATCH=partial update, DELETE=delete). Accepts invalid TLS certs since Obsidian's local API uses self-signed certs. Bearer token is pre-formatted in the constructor; uses `_check_response()` helper to deduplicate error handling.
 - `src/obsidian_mcp/types.py` — Shared types for the v3 PATCH API: `Operation` (StrEnum), `TargetType` (StrEnum), and `PatchParams` (dataclass).
