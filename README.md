@@ -5,18 +5,21 @@ An MCP (Model Context Protocol) server that exposes Obsidian vault operations as
 ## Prerequisites
 
 - [Obsidian](https://obsidian.md/) with [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin installed and enabled
-- Rust toolchain (for building from source)
+- Python ≥ 3.12
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
 
-## Build
+## Install
 
 ```bash
-cargo build --release
+uv tool install .
 ```
 
 ## Usage
 
 ```bash
 obsidian-mcp --api-key <YOUR_API_KEY>
+# or
+uv run obsidian-mcp --api-key <YOUR_API_KEY>
 ```
 
 ### Options

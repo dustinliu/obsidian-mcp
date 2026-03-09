@@ -1,71 +1,63 @@
-# Debug build
-[group('build')]
-build:
-    cargo build
-
-# Release build
-[group('build')]
-build-release: __check
-    cargo build --release
-
 # Run the server
 [group('build')]
 run *ARGS:
-    cargo run {{ARGS}}
+    uv run obsidian-mcp {{ARGS}}
 
 # Format code
 [group('quality')]
 fmt:
-    cargo fmt
+    uv run ruff format .
 
 # Check formatting
 [group('quality')]
 fmt-check:
-    cargo fmt --check
+    uv run ruff format --check .
 
-# Lint with warnings as errors
+# Lint
 [group('quality')]
-clippy:
-    cargo clippy -- -D warnings
+lint: fmt-check
+    uv run ruff check .
 
-# fmt-check + clippy
+# Fix lint issues
 [group('quality')]
-lint: fmt-check clippy
+lint-fix:
+    uv run ruff check --fix .
 
 # Run unit tests
 [group('test')]
 unit-test:
-    cargo test --lib
+    uv run pytest tests/ -v --ignore=tests/test_e2e.py
 
 # Run tests with output
 [group('test')]
 test-verbose:
-    cargo test -- --nocapture
+    uv run pytest tests/ -v -s --ignore=tests/test_e2e.py
 
 # Run e2e tests (requires OBSIDIAN_API_KEY)
 [group('test')]
 e2e:
-    cargo test --test integration_test -- --test-threads=1 --nocapture
+    uv run pytest tests/test_e2e.py -v -s
 
 # Run tests with ≥85% line coverage threshold
 [group('test')]
 coverage:
-    cargo llvm-cov --fail-under-lines 85
+    uv run pytest tests/ --ignore=tests/test_e2e.py --cov=obsidian_mcp --cov-report=term --cov-fail-under=85
 
 # Generate HTML coverage report
 [group('test')]
 coverage-report:
-    cargo llvm-cov --html
+    uv run pytest tests/ --ignore=tests/test_e2e.py --cov=obsidian_mcp --cov-report=html
 
 # Clean build artifacts
 [group('build')]
 clean:
-    cargo clean
+    rm -rf .venv .pytest_cache .ruff_cache htmlcov .coverage
 
-# lint + test + build
+# lint + test + coverage
 [group('composite')]
-__check: unit-test lint e2e coverage build
+__check: unit-test lint coverage
 
+# Deploy to ~/.local/bin
 [group('deploy')]
-deploy: build-release
-    cp target/release/obsidian-mcp ~/.local/bin
+deploy: __check
+    uv tool install --force .

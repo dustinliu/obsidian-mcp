@@ -1,7 +1,7 @@
 # E2E Testing Prerequisites
 
 The e2e integration tests run against a real Obsidian instance via the Local REST API.
-They exercise the full MCP stack: MCP client → Axum HTTP → ObsidianServer → ObsidianClient → Obsidian REST API.
+They exercise the full MCP stack: MCP tool → ObsidianClient → Obsidian REST API.
 
 ## Requirements
 
@@ -23,10 +23,10 @@ If `OBSIDIAN_API_KEY` is not set, all e2e tests are **skipped** (not failed).
 
 ```bash
 # On macOS host (default URL works)
-OBSIDIAN_API_KEY="your-api-key-here" cargo make e2e
+OBSIDIAN_API_KEY="your-api-key-here" just e2e
 
 # In OrbStack container (override URL to reach host)
-OBSIDIAN_API_URL=https://host.orb.internal:27124 OBSIDIAN_API_KEY="your-api-key-here" cargo make e2e
+OBSIDIAN_API_URL=https://host.orb.internal:27124 OBSIDIAN_API_KEY="your-api-key-here" just e2e
 ```
 
 ## Test Isolation
@@ -34,7 +34,6 @@ OBSIDIAN_API_URL=https://host.orb.internal:27124 OBSIDIAN_API_KEY="your-api-key-
 - All write operations are scoped to the `tests/` folder inside the vault.
 - Each test cleans up the `tests/` folder before and after execution.
 - Periodic note tests modify the current period's note and restore it after.
-- Tests run sequentially (`--test-threads=1`) to avoid race conditions on shared vault state.
 
 ## Troubleshooting
 
