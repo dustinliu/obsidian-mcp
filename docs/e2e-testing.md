@@ -19,6 +19,8 @@ They exercise the full MCP stack: MCP client → Axum HTTP → ObsidianServer �
 
 If `OBSIDIAN_API_KEY` is not set, all e2e tests are **skipped** (not failed).
 
+Variables can also be placed in a `.env` file at the project root — it is loaded automatically by the test harness (via `dotenvy`).
+
 ## Running
 
 ```bash
@@ -27,6 +29,11 @@ OBSIDIAN_API_KEY="your-api-key-here" just e2e
 
 # In OrbStack container (override URL to reach host)
 OBSIDIAN_API_URL=https://host.orb.internal:27124 OBSIDIAN_API_KEY="your-api-key-here" just e2e
+
+# Or use a .env file at the project root:
+# OBSIDIAN_API_KEY=your-api-key-here
+# OBSIDIAN_API_URL=https://host.orb.internal:27124  # omit for macOS host
+just e2e
 ```
 
 ## Test Isolation

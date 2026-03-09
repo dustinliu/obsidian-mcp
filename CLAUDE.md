@@ -21,6 +21,7 @@ just coverage-report     # Generate HTML unit test (--lib) coverage report
 just clean               # Clean build artifacts
 just deploy              # build-release + copy to ~/.local/bin
 just release             # Release using cargo-release (default: patch)
+just __ci-check          # CI-only checks: unit-test + lint + coverage + build (no e2e)
 ```
 
 Unit tests in `src/server.rs` and `src/client.rs` use wiremock to mock the Obsidian REST API with both happy-path and error-path coverage; `src/types.rs` and `src/error.rs` have unit tests for shared types and error handling. E2e tests in `tests/integration_test.rs` run against the real Obsidian Local REST API (see `docs/e2e-testing.md` for prerequisites).
