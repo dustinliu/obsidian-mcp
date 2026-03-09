@@ -57,7 +57,7 @@ obsidian-mcp --api-key <YOUR_API_KEY> --transport http
 | `read_note` | Read the content of a note |
 | `create_note` | Create a new note or overwrite an existing one |
 | `append_note` | Append content to an existing note |
-| `patch_note` | Partially update a note relative to a heading, block reference, or frontmatter field |
+| `patch_note` | Partially update a note relative to a heading, block reference, or frontmatter field. For `append` operations, a trailing newline is added automatically. Pass `content_type: "application/json"` to set frontmatter fields to structured values (e.g. arrays). |
 | `delete_note` | Delete a note from the vault |
 | `list_files` | List files in a vault directory |
 | `search` | Search notes by text query |
@@ -68,7 +68,7 @@ obsidian-mcp --api-key <YOUR_API_KEY> --transport http
 | `get_periodic_note` | Read a periodic note |
 | `update_periodic_note` | Replace the content of a periodic note |
 | `append_periodic_note` | Append content to a periodic note |
-| `patch_periodic_note` | Partially update a periodic note relative to a heading, block reference, or frontmatter field |
+| `patch_periodic_note` | Partially update a periodic note relative to a heading, block reference, or frontmatter field. Same `append` newline and `content_type` behavior as `patch_note`. |
 | `server_info` | Get Obsidian API server status |
 
 ## License
