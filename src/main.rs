@@ -10,6 +10,12 @@ use rmcp::transport::streamable_http_server::tower::{
 };
 use tokio_util::sync::CancellationToken;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum Transport {
+    Stdio,
+    Http,
+}
+
 #[derive(Parser)]
 #[command(
     name = "obsidian-mcp",
@@ -27,6 +33,10 @@ struct Cli {
     /// Obsidian REST API key
     #[arg(long, env = "OBSIDIAN_API_KEY")]
     api_key: String,
+
+    /// Transport mode
+    #[arg(long, env = "MCP_TRANSPORT", default_value = "stdio")]
+    transport: Transport,
 
     /// MCP server listen port
     #[arg(long, env = "MCP_PORT", default_value = "3000")]
@@ -93,4 +103,39 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn test_default_transport_is_stdio() {
+        let cli = Cli::try_parse_from(["obsidian-mcp", "--api-key", "test123"]).unwrap();
+        assert_eq!(cli.transport, Transport::Stdio);
+    }
+
+    #[test]
+    fn test_transport_http() {
+        let cli =
+            Cli::try_parse_from(["obsidian-mcp", "--api-key", "test123", "--transport", "http"])
+                .unwrap();
+        assert_eq!(cli.transport, Transport::Http);
+    }
+
+    #[test]
+    fn test_transport_stdio_explicit() {
+        let cli =
+            Cli::try_parse_from(["obsidian-mcp", "--api-key", "test123", "--transport", "stdio"])
+                .unwrap();
+        assert_eq!(cli.transport, Transport::Stdio);
+    }
+
+    #[test]
+    fn test_invalid_transport_rejected() {
+        let result =
+            Cli::try_parse_from(["obsidian-mcp", "--api-key", "test123", "--transport", "grpc"]);
+        assert!(result.is_err());
+    }
 }
