@@ -8,19 +8,14 @@ Handles CLI argument parsing, HTTP client setup, connectivity check, and wiring 
 
 ```python
 @click.command()
-@click.option("--api-url",   envvar="OBSIDIAN_API_URL", default="https://127.0.0.1:27124")
-@click.option("--api-key",   envvar="OBSIDIAN_API_KEY", required=True)
-@click.option("--port",      envvar="MCP_PORT",         default=3000, type=int)
-@click.option("--host",      envvar="MCP_HOST",         default="127.0.0.1")
-@click.option("--transport", envvar="MCP_TRANSPORT",    default="stdio", type=click.Choice(["stdio", "http"]))
-def main(api_url: str, api_key: str, port: int, host: str, transport: str) -> None: ...
+@click.option("--api-url", envvar="OBSIDIAN_API_URL", default="https://127.0.0.1:27124")
+@click.option("--api-key", envvar="OBSIDIAN_API_KEY", required=True)
+@click.option("--port",    envvar="MCP_PORT",         default=3000, type=int)
+@click.option("--host",    envvar="MCP_HOST",         default="127.0.0.1")
+def main(api_url: str, api_key: str, port: int, host: str) -> None: ...
 ```
 
 ## Behavior Contracts
-
-### Transport selection via CLI
-
-The CLI SHALL accept a `--transport` option with choices `stdio` and `http`, defaulting to `stdio`. The option SHALL also be configurable via the `MCP_TRANSPORT` environment variable.
 
 ### Startup sequence
 
@@ -33,9 +28,8 @@ The CLI SHALL accept a `--transport` option with choices `stdio` and `http`, def
       - **Success**: log and continue.
       - **Failure**: log error and `sys.exit(1)`.
    c. Call `set_client(client)` to make the client available to tool functions.
-   d. Branch on transport:
-      - `stdio`: Call `mcp.run_stdio_async()`.
-      - `http`: Configure `mcp.settings.host` and `mcp.settings.port`, then call `mcp.run_streamable_http_async()`.
+   d. Configure `mcp.settings.host` and `mcp.settings.port`.
+   e. Call `mcp.run_streamable_http_async()` to start the MCP server.
 
 ### Shutdown sequence
 
@@ -45,14 +39,14 @@ The CLI SHALL accept a `--transport` option with choices `stdio` and `http`, def
 
 ### MCP transport configuration
 
-- Transport: **stdio** (default, via `mcp.run_stdio_async()`) or **Streamable HTTP** (via `mcp.run_streamable_http_async()`).
-- Host/port configured on `mcp.settings` only for HTTP transport.
+- Transport: **Streamable HTTP** (via FastMCP's `run_streamable_http_async()`).
+- Host/port configured on `mcp.settings` before starting.
 
 ## Invariants
 
 - `OBSIDIAN_API_KEY` must be provided; process fails to start without it (enforced by `click.option(required=True)`).
 - The server refuses to start if Obsidian is unreachable at startup.
-- In HTTP mode, listening address is `{host}:{port}`; both have environment variable overrides.
+- Listening address is `{host}:{port}`; both have environment variable overrides.
 
 ## Integration Points
 

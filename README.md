@@ -1,6 +1,6 @@
 # obsidian-mcp
 
-An MCP (Model Context Protocol) server that exposes Obsidian vault operations as tools for AI assistants. Communicates with Obsidian through the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin. Supports both stdio (default) and Streamable HTTP transport.
+An MCP (Model Context Protocol) server that exposes Obsidian vault operations as tools for AI assistants. Communicates with Obsidian through the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin.
 
 ## Prerequisites
 
@@ -17,11 +17,9 @@ uv tool install .
 ## Usage
 
 ```bash
-# stdio transport (default) — for Claude Desktop and similar clients
 obsidian-mcp --api-key <YOUR_API_KEY>
-
-# HTTP transport — for remote deployments
-obsidian-mcp --api-key <YOUR_API_KEY> --transport http
+# or
+uv run obsidian-mcp --api-key <YOUR_API_KEY>
 ```
 
 ### Options
@@ -30,30 +28,12 @@ obsidian-mcp --api-key <YOUR_API_KEY> --transport http
 |------|---------|---------|-------------|
 | `--api-url` | `OBSIDIAN_API_URL` | `https://127.0.0.1:27124` | Obsidian REST API URL |
 | `--api-key` | `OBSIDIAN_API_KEY` | (required) | Obsidian REST API key |
-| `--transport` | `MCP_TRANSPORT` | `stdio` | Transport type (`stdio` or `http`) |
-| `--port` | `MCP_PORT` | `3000` | MCP server listen port (HTTP only) |
-| `--host` | `MCP_HOST` | `127.0.0.1` | MCP server listen host (HTTP only) |
+| `--port` | `MCP_PORT` | `3000` | MCP server listen port |
+| `--host` | `MCP_HOST` | `127.0.0.1` | MCP server listen host |
 
-### Claude Desktop Configuration
+### MCP Client Configuration
 
-Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "obsidian": {
-      "command": "obsidian-mcp",
-      "env": {
-        "OBSIDIAN_API_KEY": "<YOUR_API_KEY>"
-      }
-    }
-  }
-}
-```
-
-### HTTP Transport
-
-When using `--transport http`, connect your MCP client to `http://127.0.0.1:3000/mcp`.
+Connect your MCP client to `http://127.0.0.1:3000/mcp`.
 
 ## Tools
 

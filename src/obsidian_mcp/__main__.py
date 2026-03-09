@@ -38,23 +38,16 @@ logger = logging.getLogger("obsidian_mcp")
     default="127.0.0.1",
     help="MCP server host",
 )
-@click.option(
-    "--transport",
-    envvar="MCP_TRANSPORT",
-    default="stdio",
-    type=click.Choice(["stdio", "http"]),
-    help="MCP transport type",
-)
-def main(api_url: str, api_key: str, port: int, host: str, transport: str) -> None:
+def main(api_url: str, api_key: str, port: int, host: str) -> None:
     """MCP server for Obsidian vault operations."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    asyncio.run(_run(api_url=api_url, api_key=api_key, port=port, host=host, transport=transport))
+    asyncio.run(_run(api_url, api_key, port, host))
 
 
-async def _run(*, api_url: str, api_key: str, port: int, host: str, transport: str) -> None:
+async def _run(api_url: str, api_key: str, port: int, host: str) -> None:
     async with ObsidianClient(api_url, api_key) as client:
         # Verify connectivity at startup
         try:
@@ -66,14 +59,11 @@ async def _run(*, api_url: str, api_key: str, port: int, host: str, transport: s
 
         set_client(client)
 
-        if transport == "http":
-            mcp.settings.host = host
-            mcp.settings.port = port
-            logger.info("Starting MCP server on %s:%d", host, port)
-            await mcp.run_streamable_http_async()
-        else:
-            logger.info("Starting MCP server on stdio")
-            await mcp.run_stdio_async()
+        mcp.settings.host = host
+        mcp.settings.port = port
+
+        logger.info("Starting MCP server on %s:%d", host, port)
+        await mcp.run_streamable_http_async()
 
 
 if __name__ == "__main__":
