@@ -4,6 +4,7 @@ use std::sync::Arc;
 use clap::Parser;
 use obsidian_mcp::client::ObsidianClient;
 use obsidian_mcp::server::ObsidianServer;
+use rmcp::ServiceExt;
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use rmcp::transport::streamable_http_server::tower::{
     StreamableHttpServerConfig, StreamableHttpService,
@@ -50,6 +51,7 @@ struct Cli {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
                 .add_directive("obsidian_mcp=info".parse()?),
@@ -71,36 +73,48 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    // Set up MCP server
-    let cancel_token = CancellationToken::new();
-    let config = StreamableHttpServerConfig {
-        stateful_mode: true,
-        cancellation_token: cancel_token.clone(),
-        ..Default::default()
-    };
+    match cli.transport {
+        Transport::Stdio => {
+            tracing::info!("Starting MCP server with stdio transport");
+            let server = ObsidianServer::new(client);
+            let service = server
+                .serve(rmcp::transport::io::stdio())
+                .await
+                .inspect_err(|e| tracing::error!("Server error: {}", e))?;
+            service.waiting().await?;
+        }
+        Transport::Http => {
+            let cancel_token = CancellationToken::new();
+            let config = StreamableHttpServerConfig {
+                stateful_mode: true,
+                cancellation_token: cancel_token.clone(),
+                ..Default::default()
+            };
 
-    let session_manager = Arc::new(LocalSessionManager::default());
-    let client_clone = client.clone();
-    let service = StreamableHttpService::new(
-        move || Ok(ObsidianServer::new(client_clone.clone())),
-        session_manager,
-        config,
-    );
+            let session_manager = Arc::new(LocalSessionManager::default());
+            let client_clone = client.clone();
+            let service = StreamableHttpService::new(
+                move || Ok(ObsidianServer::new(client_clone.clone())),
+                session_manager,
+                config,
+            );
 
-    let app = axum::Router::new().nest_service("/mcp", service);
+            let app = axum::Router::new().nest_service("/mcp", service);
 
-    let addr: SocketAddr = format!("{}:{}", cli.host, cli.port).parse()?;
-    tracing::info!("MCP server listening on {}", addr);
+            let addr: SocketAddr = format!("{}:{}", cli.host, cli.port).parse()?;
+            tracing::info!("MCP server listening on {}", addr);
 
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+            let listener = tokio::net::TcpListener::bind(addr).await?;
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(async move {
-            tokio::signal::ctrl_c().await.ok();
-            tracing::info!("Shutting down...");
-            cancel_token.cancel();
-        })
-        .await?;
+            axum::serve(listener, app)
+                .with_graceful_shutdown(async move {
+                    tokio::signal::ctrl_c().await.ok();
+                    tracing::info!("Shutting down...");
+                    cancel_token.cancel();
+                })
+                .await?;
+        }
+    }
 
     Ok(())
 }
@@ -118,24 +132,39 @@ mod tests {
 
     #[test]
     fn test_transport_http() {
-        let cli =
-            Cli::try_parse_from(["obsidian-mcp", "--api-key", "test123", "--transport", "http"])
-                .unwrap();
+        let cli = Cli::try_parse_from([
+            "obsidian-mcp",
+            "--api-key",
+            "test123",
+            "--transport",
+            "http",
+        ])
+        .unwrap();
         assert_eq!(cli.transport, Transport::Http);
     }
 
     #[test]
     fn test_transport_stdio_explicit() {
-        let cli =
-            Cli::try_parse_from(["obsidian-mcp", "--api-key", "test123", "--transport", "stdio"])
-                .unwrap();
+        let cli = Cli::try_parse_from([
+            "obsidian-mcp",
+            "--api-key",
+            "test123",
+            "--transport",
+            "stdio",
+        ])
+        .unwrap();
         assert_eq!(cli.transport, Transport::Stdio);
     }
 
     #[test]
     fn test_invalid_transport_rejected() {
-        let result =
-            Cli::try_parse_from(["obsidian-mcp", "--api-key", "test123", "--transport", "grpc"]);
+        let result = Cli::try_parse_from([
+            "obsidian-mcp",
+            "--api-key",
+            "test123",
+            "--transport",
+            "grpc",
+        ]);
         assert!(result.is_err());
     }
 }
