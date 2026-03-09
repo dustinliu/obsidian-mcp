@@ -299,7 +299,7 @@ impl ObsidianServer {
         Parameters(args): Parameters<SearchArgs>,
     ) -> Result<CallToolResult, McpError> {
         let trimmed = args.query.trim_start();
-        if !trimmed.starts_with("TABLE") {
+        if !trimmed.to_ascii_uppercase().starts_with("TABLE") {
             return Err(McpError::invalid_params(
                 "Only TABLE queries are supported. LIST and TASK query types are not supported by the Obsidian Local REST API.",
                 None,
@@ -711,16 +711,22 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn search_query_rejects_lowercase_table() {
+    async fn search_query_accepts_lowercase_table() {
         let mock = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/search/"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&mock)
+            .await;
+
         let server = make_server(&mock).await;
-        let err = server
+        let result = server
             .search_query(Parameters(SearchArgs {
                 query: "table file.ctime FROM \"folder\"".to_string(),
             }))
             .await
-            .unwrap_err();
-        assert!(err.message.contains("Only TABLE queries"));
+            .unwrap();
+        assert_eq!(text_content(&result), "[]");
     }
 
     #[tokio::test]

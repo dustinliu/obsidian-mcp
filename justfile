@@ -77,4 +77,4 @@ deploy: build-release
 # Release using cargo-release (e.g., just release patch)
 [group('deploy')]
 release level="patch":
-    cargo release {{level}} --execute
+    cargo release {{level}}

@@ -23,10 +23,10 @@ If `OBSIDIAN_API_KEY` is not set, all e2e tests are **skipped** (not failed).
 
 ```bash
 # On macOS host (default URL works)
-OBSIDIAN_API_KEY="your-api-key-here" cargo make e2e
+OBSIDIAN_API_KEY="your-api-key-here" just e2e
 
 # In OrbStack container (override URL to reach host)
-OBSIDIAN_API_URL=https://host.orb.internal:27124 OBSIDIAN_API_KEY="your-api-key-here" cargo make e2e
+OBSIDIAN_API_URL=https://host.orb.internal:27124 OBSIDIAN_API_KEY="your-api-key-here" just e2e
 ```
 
 ## Test Isolation

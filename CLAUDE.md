@@ -8,7 +8,7 @@ Uses [just](https://github.com/casey/just) for task orchestration.
 
 ```bash
 just build               # Debug build
-just build-release       # Release build (runs unit-test + lint + e2e + coverage + build first via __check)
+just build-release       # Release build (runs unit-test + lint + e2e + coverage + debug build first via __check)
 just run                 # Run with stdio transport (default; pass extra args after --)
 just fmt                 # Format
 just clippy              # Lint (warnings as errors)
