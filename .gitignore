@@ -27,3 +27,4 @@ debug
 .devenv
 tmp/
 .env
+.coverage

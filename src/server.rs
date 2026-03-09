@@ -63,6 +63,8 @@ pub struct PatchNoteArgs {
     pub trim_target_whitespace: Option<bool>,
     /// Create the target if it doesn't exist (useful for frontmatter)
     pub create_target_if_missing: Option<bool>,
+    /// Content-Type for the request body. Use "application/json" when setting frontmatter fields to structured values like arrays (e.g. ["tag1","tag2"]). Defaults to "text/markdown".
+    pub content_type: Option<String>,
     /// Content to insert at the target location
     pub content: String,
 }
@@ -162,6 +164,8 @@ pub struct PatchPeriodicNoteArgs {
     pub trim_target_whitespace: Option<bool>,
     /// Create the target if it doesn't exist (useful for frontmatter)
     pub create_target_if_missing: Option<bool>,
+    /// Content-Type for the request body. Use "application/json" when setting frontmatter fields to structured values like arrays (e.g. ["tag1","tag2"]). Defaults to "text/markdown".
+    pub content_type: Option<String>,
     /// Content to insert at the target location
     pub content: String,
 }
@@ -234,6 +238,7 @@ impl ObsidianServer {
             target_delimiter: args.target_delimiter,
             trim_target_whitespace: args.trim_target_whitespace,
             create_target_if_missing: args.create_target_if_missing,
+            content_type: args.content_type,
         };
         let result = self
             .client
@@ -403,6 +408,7 @@ impl ObsidianServer {
             target_delimiter: args.target_delimiter,
             trim_target_whitespace: args.trim_target_whitespace,
             create_target_if_missing: args.create_target_if_missing,
+            content_type: args.content_type,
         };
         let result = self
             .client
