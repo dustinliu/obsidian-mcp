@@ -8,8 +8,27 @@ permissions:
   contents: write
 
 jobs:
+  ci:
+    name: CI Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@just
+
+      - uses: taiki-e/install-action@cargo-llvm-cov
+
+      - run: just __ci-check
+
   build:
     name: Build ${{ matrix.target }}
+    needs: ci
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -51,6 +70,8 @@ jobs:
 
       - name: Package
         run: |
+          BINARY=target/${{ matrix.target }}/release/obsidian-mcp
+          test -f "$BINARY" || { echo "::error::Binary not found: $BINARY"; exit 1; }
           cd target/${{ matrix.target }}/release
           tar czf ../../../obsidian-mcp-${{ matrix.target }}.tar.gz obsidian-mcp
           cd ../../..
