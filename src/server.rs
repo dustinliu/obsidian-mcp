@@ -52,9 +52,12 @@ pub struct PatchNoteArgs {
     pub operation: Operation,
     /// Target type: "heading", "block", or "frontmatter"
     pub target_type: TargetType,
-    /// Target identifier (heading name, block reference ID, or frontmatter field name)
+    /// Target identifier. For headings: use the heading text without the # prefix.
+    /// Sub-headings require the full path from the top-level heading using :: as delimiter
+    /// (e.g. "Heading 1::Subheading 1" to target ## Subheading 1 under # Heading 1).
+    /// For block references: the block ID. For frontmatter: the field name.
     pub target: String,
-    /// Delimiter for nested targets like headings (default: "::")
+    /// Delimiter for nested heading paths (default: "::")
     pub target_delimiter: Option<String>,
     /// Trim whitespace from target before applying patch
     pub trim_target_whitespace: Option<bool>,
@@ -148,9 +151,12 @@ pub struct PatchPeriodicNoteArgs {
     pub operation: Operation,
     /// Target type: "heading", "block", or "frontmatter"
     pub target_type: TargetType,
-    /// Target identifier (heading name, block reference ID, or frontmatter field name)
+    /// Target identifier. For headings: use the heading text without the # prefix.
+    /// Sub-headings require the full path from the top-level heading using :: as delimiter
+    /// (e.g. "Heading 1::Subheading 1" to target ## Subheading 1 under # Heading 1).
+    /// For block references: the block ID. For frontmatter: the field name.
     pub target: String,
-    /// Delimiter for nested targets like headings (default: "::")
+    /// Delimiter for nested heading paths (default: "::")
     pub target_delimiter: Option<String>,
     /// Trim whitespace from target before applying patch
     pub trim_target_whitespace: Option<bool>,
@@ -215,7 +221,7 @@ impl ObsidianServer {
     }
 
     #[tool(
-        description = "Partially update a note relative to a heading, block reference, or frontmatter field"
+        description = "Partially update a note relative to a heading, block reference, or frontmatter field. For heading targets, sub-headings must use the full path with :: delimiter (e.g. \"Heading 1::Subheading 1\"); only top-level headings can be targeted by name alone."
     )]
     async fn patch_note(
         &self,
@@ -384,7 +390,7 @@ impl ObsidianServer {
     }
 
     #[tool(
-        description = "Partially update a periodic note relative to a heading, block reference, or frontmatter field"
+        description = "Partially update a periodic note relative to a heading, block reference, or frontmatter field. For heading targets, sub-headings must use the full path with :: delimiter (e.g. \"Heading 1::Subheading 1\"); only top-level headings can be targeted by name alone."
     )]
     async fn patch_periodic_note(
         &self,
@@ -440,5 +446,42 @@ impl ServerHandler for ObsidianServer {
                 "MCP server for Obsidian vault operations via Local REST API".to_string(),
             ),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use schemars::schema_for;
+    use serde_json::Value;
+
+    fn get_field_description(schema: &schemars::Schema, field: &str) -> String {
+        let json: Value = serde_json::to_value(schema).unwrap();
+        json["properties"][field]["description"]
+            .as_str()
+            .unwrap_or("")
+            .to_string()
+    }
+
+    #[test]
+    fn patch_note_target_field_describes_nested_heading_path() {
+        let schema = schema_for!(PatchNoteArgs);
+        let desc = get_field_description(&schema, "target");
+        assert!(
+            desc.contains("Heading 1::Subheading"),
+            "PatchNoteArgs 'target' field should document nested heading path with :: syntax, got: {}",
+            desc
+        );
+    }
+
+    #[test]
+    fn patch_periodic_note_target_field_describes_nested_heading_path() {
+        let schema = schema_for!(PatchPeriodicNoteArgs);
+        let desc = get_field_description(&schema, "target");
+        assert!(
+            desc.contains("Heading 1::Subheading"),
+            "PatchPeriodicNoteArgs 'target' field should document nested heading path with :: syntax, got: {}",
+            desc
+        );
     }
 }
