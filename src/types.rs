@@ -50,6 +50,8 @@ pub struct PatchParams {
     pub target_delimiter: Option<String>,
     pub trim_target_whitespace: Option<bool>,
     pub create_target_if_missing: Option<bool>,
+    /// Content-Type header value (defaults to "text/markdown"; use "application/json" for frontmatter arrays)
+    pub content_type: Option<String>,
 }
 
 #[cfg(test)]

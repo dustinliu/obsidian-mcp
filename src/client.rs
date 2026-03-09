@@ -2,7 +2,7 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use crate::error::AppError;
-use crate::types::PatchParams;
+use crate::types::{Operation, PatchParams};
 
 #[derive(Debug, Deserialize, serde::Serialize)]
 pub struct ServerInfo {
@@ -102,11 +102,12 @@ impl ObsidianClient {
         params: &PatchParams,
         content: &str,
     ) -> Result<String, AppError> {
+        let content_type = params.content_type.as_deref().unwrap_or("text/markdown");
         let mut req = self
             .http
             .patch(self.url(&format!("/vault/{}", path)))
             .header("Authorization", &self.bearer_token)
-            .header("Content-Type", "text/markdown")
+            .header("Content-Type", content_type)
             .header("Operation", params.operation.to_string())
             .header("Target-Type", params.target_type.to_string())
             .header("Target", &params.target);
@@ -121,7 +122,10 @@ impl ObsidianClient {
             req = req.header("Create-Target-If-Missing", create.to_string());
         }
 
-        let resp = req.body(content.to_string()).send().await?;
+        let resp = req
+            .body(Self::prepare_patch_body(&params.operation, content))
+            .send()
+            .await?;
         let resp = self.check_response(resp).await?;
         Ok(resp.text().await?)
     }
@@ -293,11 +297,12 @@ impl ObsidianClient {
         params: &PatchParams,
         content: &str,
     ) -> Result<String, AppError> {
+        let content_type = params.content_type.as_deref().unwrap_or("text/markdown");
         let mut req = self
             .http
             .patch(self.periodic_url(period, year, month, day))
             .header("Authorization", &self.bearer_token)
-            .header("Content-Type", "text/markdown")
+            .header("Content-Type", content_type)
             .header("Operation", params.operation.to_string())
             .header("Target-Type", params.target_type.to_string())
             .header("Target", &params.target);
@@ -312,9 +317,19 @@ impl ObsidianClient {
             req = req.header("Create-Target-If-Missing", create.to_string());
         }
 
-        let resp = req.body(content.to_string()).send().await?;
+        let resp = req
+            .body(Self::prepare_patch_body(&params.operation, content))
+            .send()
+            .await?;
         let resp = self.check_response(resp).await?;
         Ok(resp.text().await?)
+    }
+
+    fn prepare_patch_body(operation: &Operation, content: &str) -> String {
+        match operation {
+            Operation::Append if !content.ends_with('\n') => format!("{}\n", content),
+            _ => content.to_owned(),
+        }
     }
 }
 
@@ -458,7 +473,7 @@ mod tests {
             .and(header("Operation", "append"))
             .and(header("Target-Type", "heading"))
             .and(header("Target", "Introduction"))
-            .and(body_string("new content"))
+            .and(body_string("new content\n"))
             .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
             .mount(&server)
             .await;
@@ -471,6 +486,7 @@ mod tests {
             target_delimiter: None,
             trim_target_whitespace: None,
             create_target_if_missing: None,
+            content_type: None,
         };
         let result = client
             .patch_note("note.md", &params, "new content")
@@ -505,9 +521,128 @@ mod tests {
             target_delimiter: Some("/".to_string()),
             trim_target_whitespace: Some(true),
             create_target_if_missing: Some(true),
+            content_type: None,
         };
         let result = client
             .patch_note("note.md", &params, "new-tag")
+            .await
+            .unwrap();
+        assert_eq!(result, "ok");
+    }
+
+    #[tokio::test]
+    async fn patch_note_uses_json_content_type_when_specified() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/vault/note.md"))
+            .and(header("Content-Type", "application/json"))
+            .and(header("Operation", "replace"))
+            .and(header("Target-Type", "frontmatter"))
+            .and(header("Target", "tags"))
+            .and(body_string("[\"a\",\"b\"]"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .mount(&server)
+            .await;
+
+        let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Replace,
+            target_type: TargetType::Frontmatter,
+            target: "tags".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+            content_type: Some("application/json".to_string()),
+        };
+        let result = client
+            .patch_note("note.md", &params, "[\"a\",\"b\"]")
+            .await
+            .unwrap();
+        assert_eq!(result, "ok");
+    }
+
+    #[tokio::test]
+    async fn patch_note_defaults_to_markdown_content_type() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/vault/note.md"))
+            .and(header("Content-Type", "text/markdown"))
+            .and(header("Operation", "replace"))
+            .and(header("Target-Type", "heading"))
+            .and(header("Target", "Intro"))
+            .and(body_string("hello"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .mount(&server)
+            .await;
+
+        let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Replace,
+            target_type: TargetType::Heading,
+            target: "Intro".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+            content_type: None,
+        };
+        let result = client
+            .patch_note("note.md", &params, "hello")
+            .await
+            .unwrap();
+        assert_eq!(result, "ok");
+    }
+
+    #[tokio::test]
+    async fn patch_note_append_adds_trailing_newline_if_missing() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/vault/note.md"))
+            .and(header("Operation", "append"))
+            .and(body_string("new content\n"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .mount(&server)
+            .await;
+
+        let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Append,
+            target_type: TargetType::Heading,
+            target: "Introduction".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+            content_type: None,
+        };
+        let result = client
+            .patch_note("note.md", &params, "new content")
+            .await
+            .unwrap();
+        assert_eq!(result, "ok");
+    }
+
+    #[tokio::test]
+    async fn patch_note_append_does_not_double_newline() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/vault/note.md"))
+            .and(header("Operation", "append"))
+            .and(body_string("new content\n"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .mount(&server)
+            .await;
+
+        let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Append,
+            target_type: TargetType::Heading,
+            target: "Introduction".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+            content_type: None,
+        };
+        let result = client
+            .patch_note("note.md", &params, "new content\n")
             .await
             .unwrap();
         assert_eq!(result, "ok");
@@ -742,7 +877,7 @@ mod tests {
             .and(header("Operation", "append"))
             .and(header("Target-Type", "heading"))
             .and(header("Target", "Tasks"))
-            .and(body_string("- [ ] do thing"))
+            .and(body_string("- [ ] do thing\n"))
             .respond_with(ResponseTemplate::new(200).set_body_string("patched daily"))
             .mount(&server)
             .await;
@@ -755,6 +890,7 @@ mod tests {
             target_delimiter: None,
             trim_target_whitespace: None,
             create_target_if_missing: None,
+            content_type: None,
         };
         let result = client
             .patch_periodic_note(
@@ -793,9 +929,73 @@ mod tests {
             target_delimiter: None,
             trim_target_whitespace: None,
             create_target_if_missing: None,
+            content_type: None,
         };
         let result = client
             .patch_periodic_note("monthly", None, None, None, &params, "replaced")
+            .await
+            .unwrap();
+        assert_eq!(result, "ok");
+    }
+
+    #[tokio::test]
+    async fn patch_periodic_note_append_adds_trailing_newline_if_missing() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/periodic/daily/2026/3/6/"))
+            .and(header("Operation", "append"))
+            .and(body_string("- [ ] task\n"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .mount(&server)
+            .await;
+
+        let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Append,
+            target_type: TargetType::Heading,
+            target: "Tasks".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+            content_type: None,
+        };
+        let result = client
+            .patch_periodic_note("daily", Some(2026), Some(3), Some(6), &params, "- [ ] task")
+            .await
+            .unwrap();
+        assert_eq!(result, "ok");
+    }
+
+    #[tokio::test]
+    async fn patch_periodic_note_append_does_not_double_newline() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/periodic/daily/2026/3/6/"))
+            .and(header("Operation", "append"))
+            .and(body_string("- [ ] task\n"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .mount(&server)
+            .await;
+
+        let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Append,
+            target_type: TargetType::Heading,
+            target: "Tasks".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+            content_type: None,
+        };
+        let result = client
+            .patch_periodic_note(
+                "daily",
+                Some(2026),
+                Some(3),
+                Some(6),
+                &params,
+                "- [ ] task\n",
+            )
             .await
             .unwrap();
         assert_eq!(result, "ok");
