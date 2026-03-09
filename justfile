@@ -1,63 +1,71 @@
+# Debug build
+[group('build')]
+build:
+    cargo build
+
+# Release build
+[group('build')]
+build-release: __check
+    cargo build --release
+
 # Run the server
 [group('build')]
 run *ARGS:
-    uv run obsidian-mcp {{ARGS}}
+    cargo run {{ARGS}}
 
 # Format code
 [group('quality')]
 fmt:
-    uv run ruff format .
+    cargo fmt
 
 # Check formatting
 [group('quality')]
 fmt-check:
-    uv run ruff format --check .
+    cargo fmt --check
 
-# Lint
+# Lint with warnings as errors
 [group('quality')]
-lint: fmt-check
-    uv run ruff check .
+clippy:
+    cargo clippy -- -D warnings
 
-# Fix lint issues
+# fmt-check + clippy
 [group('quality')]
-lint-fix:
-    uv run ruff check --fix .
+lint: fmt-check clippy
 
 # Run unit tests
 [group('test')]
 unit-test:
-    uv run pytest tests/ -v --ignore=tests/test_e2e.py
+    cargo test --lib
 
 # Run tests with output
 [group('test')]
 test-verbose:
-    uv run pytest tests/ -v -s --ignore=tests/test_e2e.py
+    cargo test -- --nocapture
 
 # Run e2e tests (requires OBSIDIAN_API_KEY)
 [group('test')]
 e2e:
-    uv run pytest tests/test_e2e.py -v -s
+    cargo test --test integration_test -- --test-threads=1 --nocapture
 
 # Run tests with ≥85% line coverage threshold
 [group('test')]
 coverage:
-    uv run pytest tests/ --ignore=tests/test_e2e.py --cov=obsidian_mcp --cov-report=term --cov-fail-under=85
+    cargo llvm-cov --fail-under-lines 85
 
 # Generate HTML coverage report
 [group('test')]
 coverage-report:
-    uv run pytest tests/ --ignore=tests/test_e2e.py --cov=obsidian_mcp --cov-report=html
+    cargo llvm-cov --html
 
 # Clean build artifacts
 [group('build')]
 clean:
-    rm -rf .venv .pytest_cache .ruff_cache htmlcov .coverage
+    cargo clean
 
-# lint + test + coverage
+# lint + test + build
 [group('composite')]
-__check: unit-test lint coverage
+__check: unit-test lint e2e coverage build
 
-# Deploy to ~/.local/bin
 [group('deploy')]
-deploy: __check
-    uv tool install --force .
+deploy: build-release
+    cp target/release/obsidian-mcp ~/.local/bin
