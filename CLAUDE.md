@@ -9,7 +9,7 @@ Uses [just](https://github.com/casey/just) for task orchestration.
 ```bash
 just build               # Debug build
 just build-release       # Release build (runs unit-test + lint + e2e + coverage + build first via __check)
-just run                 # Run (pass extra args after --)
+just run                 # Run with stdio transport (default; pass extra args after --)
 just fmt                 # Format
 just clippy              # Lint (warnings as errors)
 just lint                # fmt-check + clippy
@@ -26,7 +26,7 @@ Unit tests in `src/client.rs` use wiremock to mock the Obsidian REST API; `src/t
 
 ## Architecture
 
-This is an MCP (Model Context Protocol) server that bridges AI assistants to Obsidian vaults via the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin. It uses Streamable HTTP transport (not stdio).
+This is an MCP (Model Context Protocol) server that bridges AI assistants to Obsidian vaults via the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin. It supports two transport modes: stdio (default, for Claude Desktop and similar clients) and Streamable HTTP (opt-in via `--transport http`).
 
 **Source files:**
 

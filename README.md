@@ -1,6 +1,6 @@
 # obsidian-mcp
 
-An MCP (Model Context Protocol) server that exposes Obsidian vault operations as tools for AI assistants. Communicates with Obsidian through the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin.
+An MCP (Model Context Protocol) server that exposes Obsidian vault operations as tools for AI assistants. Supports both stdio (default) and Streamable HTTP transport modes. Communicates with Obsidian through the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin.
 
 ## Prerequisites
 
@@ -25,12 +25,30 @@ obsidian-mcp --api-key <YOUR_API_KEY>
 |------|---------|---------|-------------|
 | `--api-url` | `OBSIDIAN_API_URL` | `https://127.0.0.1:27124` | Obsidian REST API URL |
 | `--api-key` | `OBSIDIAN_API_KEY` | (required) | Obsidian REST API key |
+| `--transport` | `MCP_TRANSPORT` | `stdio` | Transport mode: `stdio` or `http` |
 | `--port` | `MCP_PORT` | `3000` | MCP server listen port |
 | `--host` | `MCP_HOST` | `127.0.0.1` | MCP server listen host |
 
 ### MCP Client Configuration
 
-Connect your MCP client to `http://127.0.0.1:3000/mcp`.
+**stdio (default):** Configure your MCP client to spawn the server directly:
+
+```json
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "obsidian-mcp",
+      "args": ["--api-key", "<YOUR_API_KEY>"]
+    }
+  }
+}
+```
+
+**HTTP:** Connect your MCP client to `http://127.0.0.1:3000/mcp`:
+
+```bash
+obsidian-mcp --api-key <YOUR_API_KEY> --transport http
+```
 
 ## Tools
 
