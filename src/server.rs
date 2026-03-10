@@ -53,10 +53,10 @@ pub struct PatchNoteArgs {
     /// Target type: "heading", "block", or "frontmatter"
     pub target_type: TargetType,
     /// Target identifier. For headings: use the heading text without the # prefix.
-    /// Only # (h1) headings are top-level and can be targeted by name alone.
-    /// All ## and deeper headings MUST include the full path from the nearest # (h1) ancestor
-    /// using :: as delimiter (e.g. if the note has "# Report" > "## Summary",
-    /// target must be "Report::Summary", NOT just "Summary").
+    /// Top-level headings (those without a parent heading) can be targeted by name alone.
+    /// Nested headings MUST include the full path from their top-level ancestor
+    /// using :: as delimiter (e.g. if the note has "## Report" > "### Summary" > "#### Details",
+    /// target "Summary" must be "Report::Summary", target "Details" must be "Report::Summary::Details").
     /// If unsure of the heading structure, use read_note first to confirm the exact heading path.
     /// For block references: the block ID. For frontmatter: the field name.
     pub target: String,
@@ -157,11 +157,11 @@ pub struct PatchPeriodicNoteArgs {
     /// Target type: "heading", "block", or "frontmatter"
     pub target_type: TargetType,
     /// Target identifier. For headings: use the heading text without the # prefix.
-    /// Only # (h1) headings are top-level and can be targeted by name alone.
-    /// All ## and deeper headings MUST include the full path from the nearest # (h1) ancestor
-    /// using :: as delimiter (e.g. if the note has "# Report" > "## Summary",
-    /// target must be "Report::Summary", NOT just "Summary").
-    /// If unsure of the heading structure, use read_note first to confirm the exact heading path.
+    /// Top-level headings (those without a parent heading) can be targeted by name alone.
+    /// Nested headings MUST include the full path from their top-level ancestor
+    /// using :: as delimiter (e.g. if the note has "## Report" > "### Summary" > "#### Details",
+    /// target "Summary" must be "Report::Summary", target "Details" must be "Report::Summary::Details").
+    /// If unsure of the heading structure, use read_note/get_periodic_note first to confirm the exact heading path.
     /// For block references: the block ID. For frontmatter: the field name.
     pub target: String,
     /// Delimiter for nested heading paths (default: "::")
@@ -231,7 +231,7 @@ impl ObsidianServer {
     }
 
     #[tool(
-        description = "Partially update a note relative to a heading, block reference, or frontmatter field. Only # (h1) headings are top-level and can be targeted by name alone. All ## and deeper headings MUST use the full path from the nearest # (h1) ancestor with :: delimiter (e.g. note has '# Report' > '## Summary' → target = 'Report::Summary', NOT 'Summary'). If unsure of the heading structure, use read_note first."
+        description = "Partially update a note relative to a heading, block reference, or frontmatter field. Top-level headings (those without a parent heading) can be targeted by name alone. Nested headings MUST use the full path from their top-level ancestor with :: delimiter (e.g. note has '## Report' > '### Summary' > '#### Details' → target 'Summary' = 'Report::Summary', target 'Details' = 'Report::Summary::Details'). If unsure of the heading structure, use read_note first."
     )]
     async fn patch_note(
         &self,
@@ -401,7 +401,7 @@ impl ObsidianServer {
     }
 
     #[tool(
-        description = "Partially update a periodic note relative to a heading, block reference, or frontmatter field. Only # (h1) headings are top-level and can be targeted by name alone. All ## and deeper headings MUST use the full path from the nearest # (h1) ancestor with :: delimiter (e.g. note has '# Report' > '## Summary' → target = 'Report::Summary', NOT 'Summary'). If unsure of the heading structure, use read_note/get_periodic_note first."
+        description = "Partially update a periodic note relative to a heading, block reference, or frontmatter field. Top-level headings (those without a parent heading) can be targeted by name alone. Nested headings MUST use the full path from their top-level ancestor with :: delimiter (e.g. note has '## Report' > '### Summary' > '#### Details' → target 'Summary' = 'Report::Summary', target 'Details' = 'Report::Summary::Details'). If unsure of the heading structure, use read_note/get_periodic_note first."
     )]
     async fn patch_periodic_note(
         &self,
@@ -495,8 +495,12 @@ mod tests {
             "{struct_name} 'target' field should include concrete example like 'Report::Summary', got: {desc}"
         );
         assert!(
-            desc.contains("# (h1)"),
-            "{struct_name} 'target' field should clarify that only # (h1) headings are top-level, got: {desc}"
+            desc.contains("Report::Summary::Details"),
+            "{struct_name} 'target' field should include three-level example like 'Report::Summary::Details', got: {desc}"
+        );
+        assert!(
+            desc.contains("Top-level headings"),
+            "{struct_name} 'target' field should clarify that top-level headings can be targeted by name alone, got: {desc}"
         );
     }
 
