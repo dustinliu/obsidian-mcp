@@ -47,6 +47,11 @@ This is an MCP (Model Context Protocol) server that bridges AI assistants to Obs
 2. Add an `async fn` method inside the `#[tool_router] impl ObsidianServer` block with a `#[tool(description = "...")]` attribute
 3. If the tool needs a new API call, add the corresponding method to `ObsidianClient` in `client.rs`
 
+## Documentation
+
+- **README.md is the user manual** — write it from the perspective of an end user setting up and using the tool, not a developer contributing to the codebase. It should cover: prerequisites (with setup steps), installation, getting the API key, MCP client configuration, and available tools with user-friendly descriptions.
+- **CLAUDE.md is for contributors** — architecture, build commands, process rules.
+
 ## Process Rules
 
 - **TDD is mandatory.** Every implementation task must follow: write failing test → verify it fails → implement → verify it passes → commit. Never write plans or code without tests.
