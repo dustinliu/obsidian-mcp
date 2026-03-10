@@ -51,4 +51,4 @@ just e2e
 
 ## Note: `cargo release` Pre-Release Hook
 
-The `release.toml` pre-release-hook runs `just __check`, which includes e2e tests. This means **a live Obsidian instance with the Local REST API is required** when running `just release` or `cargo release`. If Obsidian is not running, the release will fail at the e2e step.
+The `release.toml` pre-release-hook runs `just check`, which includes e2e tests. This means **a live Obsidian instance with the Local REST API is required** when running `just release` or `cargo release`. If Obsidian is not running, the release will fail at the e2e step.
