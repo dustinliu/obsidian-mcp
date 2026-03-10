@@ -53,8 +53,11 @@ pub struct PatchNoteArgs {
     /// Target type: "heading", "block", or "frontmatter"
     pub target_type: TargetType,
     /// Target identifier. For headings: use the heading text without the # prefix.
-    /// Sub-headings require the full path from the top-level heading using :: as delimiter
-    /// (e.g. "Heading 1::Subheading 1" to target ## Subheading 1 under # Heading 1).
+    /// Only # (h1) headings are top-level and can be targeted by name alone.
+    /// All ## and deeper headings MUST include the full path from the nearest # (h1) ancestor
+    /// using :: as delimiter (e.g. if the note has "# Report" > "## Summary",
+    /// target must be "Report::Summary", NOT just "Summary").
+    /// If unsure of the heading structure, use read_note first to confirm the exact heading path.
     /// For block references: the block ID. For frontmatter: the field name.
     pub target: String,
     /// Delimiter for nested heading paths (default: "::")
@@ -154,8 +157,11 @@ pub struct PatchPeriodicNoteArgs {
     /// Target type: "heading", "block", or "frontmatter"
     pub target_type: TargetType,
     /// Target identifier. For headings: use the heading text without the # prefix.
-    /// Sub-headings require the full path from the top-level heading using :: as delimiter
-    /// (e.g. "Heading 1::Subheading 1" to target ## Subheading 1 under # Heading 1).
+    /// Only # (h1) headings are top-level and can be targeted by name alone.
+    /// All ## and deeper headings MUST include the full path from the nearest # (h1) ancestor
+    /// using :: as delimiter (e.g. if the note has "# Report" > "## Summary",
+    /// target must be "Report::Summary", NOT just "Summary").
+    /// If unsure of the heading structure, use read_note first to confirm the exact heading path.
     /// For block references: the block ID. For frontmatter: the field name.
     pub target: String,
     /// Delimiter for nested heading paths (default: "::")
@@ -225,7 +231,7 @@ impl ObsidianServer {
     }
 
     #[tool(
-        description = "Partially update a note relative to a heading, block reference, or frontmatter field. For heading targets, sub-headings must use the full path with :: delimiter (e.g. \"Heading 1::Subheading 1\"); only top-level headings can be targeted by name alone."
+        description = "Partially update a note relative to a heading, block reference, or frontmatter field. Only # (h1) headings are top-level and can be targeted by name alone. All ## and deeper headings MUST use the full path from the nearest # (h1) ancestor with :: delimiter (e.g. note has '# Report' > '## Summary' → target = 'Report::Summary', NOT 'Summary'). If unsure of the heading structure, use read_note first."
     )]
     async fn patch_note(
         &self,
@@ -395,7 +401,7 @@ impl ObsidianServer {
     }
 
     #[tool(
-        description = "Partially update a periodic note relative to a heading, block reference, or frontmatter field. For heading targets, sub-headings must use the full path with :: delimiter (e.g. \"Heading 1::Subheading 1\"); only top-level headings can be targeted by name alone."
+        description = "Partially update a periodic note relative to a heading, block reference, or frontmatter field. Only # (h1) headings are top-level and can be targeted by name alone. All ## and deeper headings MUST use the full path from the nearest # (h1) ancestor with :: delimiter (e.g. note has '# Report' > '## Summary' → target = 'Report::Summary', NOT 'Summary'). If unsure of the heading structure, use read_note/get_periodic_note first."
     )]
     async fn patch_periodic_note(
         &self,
@@ -488,8 +494,13 @@ mod tests {
         let schema = schema_for!(PatchNoteArgs);
         let desc = get_field_description(&schema, "target");
         assert!(
-            desc.contains("Heading 1::Subheading"),
-            "PatchNoteArgs 'target' field should document nested heading path with :: syntax, got: {}",
+            desc.contains("Report::Summary"),
+            "PatchNoteArgs 'target' field should include concrete example like 'Report::Summary', got: {}",
+            desc
+        );
+        assert!(
+            desc.contains("# (h1)"),
+            "PatchNoteArgs 'target' field should clarify that only # (h1) headings are top-level, got: {}",
             desc
         );
     }
@@ -499,8 +510,13 @@ mod tests {
         let schema = schema_for!(PatchPeriodicNoteArgs);
         let desc = get_field_description(&schema, "target");
         assert!(
-            desc.contains("Heading 1::Subheading"),
-            "PatchPeriodicNoteArgs 'target' field should document nested heading path with :: syntax, got: {}",
+            desc.contains("Report::Summary"),
+            "PatchPeriodicNoteArgs 'target' field should include concrete example like 'Report::Summary', got: {}",
+            desc
+        );
+        assert!(
+            desc.contains("# (h1)"),
+            "PatchPeriodicNoteArgs 'target' field should clarify that only # (h1) headings are top-level, got: {}",
             desc
         );
     }
