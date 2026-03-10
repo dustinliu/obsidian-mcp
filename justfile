@@ -74,4 +74,4 @@ __ci-check: unit-test lint coverage build
 # Release using cargo-release (e.g., just release patch)
 [group('deploy')]
 release level="patch":
-    cargo release {{level}}
+    cargo release {{level}} --execute
