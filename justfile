@@ -61,6 +61,7 @@ coverage-report:
 [group('build')]
 clean:
     cargo clean
+    rm -rf .coverage
 
 # Full pre-release checks: unit-test, lint, e2e, coverage, build
 [group('composite')]
