@@ -27,4 +27,4 @@ jobs:
 
       - uses: taiki-e/install-action@cargo-llvm-cov
 
-      - run: just __ci-check
+      - run: just ci-check

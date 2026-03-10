@@ -59,7 +59,7 @@
 - Transport options: stdio (default for Claude Desktop) or HTTP streamable (opt-in via `--transport http`)
 
 **CI Pipeline:**
-- Pre-release checks defined in `release.toml`: runs `just __check` (unit-test + lint + coverage + build)
+- Pre-release checks defined in `release.toml`: runs `just check` (unit-test + lint + coverage + build)
 - No external CI service configured; releases use `cargo-release` for version bumping and tagging
 
 ## Environment Configuration

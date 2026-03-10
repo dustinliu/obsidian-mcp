@@ -8,7 +8,7 @@ Uses [just](https://github.com/casey/just) for task orchestration.
 
 ```bash
 just build               # Debug build
-just build-release       # Release build (runs unit-test + lint + e2e + coverage + debug build first via __check)
+just build-release       # Release build (runs check: unit-test + lint + e2e + coverage before release build)
 just run                 # Run with stdio transport (default; pass extra args after --)
 just fmt                 # Format
 just clippy              # Lint (warnings as errors)
@@ -19,9 +19,9 @@ just e2e                 # Run e2e tests (requires OBSIDIAN_API_KEY, see docs/e2
 just coverage            # Run unit tests (--lib) with ≥85% line coverage threshold
 just coverage-report     # Generate HTML unit test (--lib) coverage report
 just clean               # Clean build artifacts
-just deploy              # build-release + copy to ~/.local/bin
+just install             # build-release + copy to ~/.local/bin
 just release             # Release using cargo-release (default: patch)
-just __ci-check          # CI-only checks: unit-test + lint + coverage + build (no e2e)
+just ci-check            # CI-only checks: unit-test + lint + coverage + build (no e2e)
 ```
 
 Unit tests in `src/server.rs` and `src/client.rs` use wiremock to mock the Obsidian REST API with both happy-path and error-path coverage; `src/types.rs` and `src/error.rs` have unit tests for shared types and error handling. E2e tests in `tests/integration_test.rs` run against the real Obsidian Local REST API (see `docs/e2e-testing.md` for prerequisites).
@@ -35,7 +35,7 @@ This is an MCP (Model Context Protocol) server that bridges AI assistants to Obs
 - `src/lib.rs` — Re-exports `client`, `error`, `server`, and `types` as public modules.
 - `src/main.rs` — CLI parsing (clap), Axum HTTP server setup, MCP transport wiring. The MCP endpoint is mounted at `/mcp`.
 - `src/server.rs` — `ObsidianServer` implements `ServerHandler` from the `rmcp` crate. All 16 MCP tools are defined here using `#[tool]` / `#[tool_router]` / `#[tool_handler]` proc macros. Each tool method deserializes args from a `Parameters<T>` wrapper where `T` is a `Deserialize + JsonSchema` struct defined in the same file (or in `types.rs` for shared types). Uses `to_mcp_error()` helper to convert errors.
-- `src/client.rs` — `ObsidianClient` wraps `reqwest::Client` to call the Obsidian REST API. Maps HTTP methods to vault operations (GET=read, PUT=create, POST=append, PATCH=partial update, DELETE=delete). Accepts invalid TLS certs since Obsidian's local API uses self-signed certs. Bearer token is pre-formatted in the constructor; uses `check_response()` helper to deduplicate error handling. `prepare_patch_body()` private helper normalizes PATCH body: auto-appends `\n` for `append` operations and is shared by both `patch_note` and `patch_periodic_note`.
+- `src/client.rs` — `ObsidianClient` wraps `reqwest::Client` to call the Obsidian REST API. Maps HTTP methods to vault operations (GET=read, PUT=create, POST=append, PATCH=partial update, DELETE=delete). Accepts invalid TLS certs since Obsidian's local API uses self-signed certs. Bearer token is pre-formatted in the constructor; uses `check_response()` helper to deduplicate error handling. `prepare_patch_body()` private helper normalizes PATCH body: auto-appends `\n` for `append` operations and is shared by both `patch_note` and `patch_periodic_note`. `percent_encode_target()` private helper percent-encodes non-ASCII characters in Target header values (each UTF-8 byte encoded individually).
 - `src/types.rs` — Shared types for the v3 PATCH API: `Operation` (append/prepend/replace), `TargetType` (heading/block/frontmatter), and `PatchParams`. `PatchParams.content_type` defaults to `text/markdown`; set to `application/json` for frontmatter array values.
 - `src/error.rs` — `AppError` enum using `thiserror`.
 
@@ -46,6 +46,11 @@ This is an MCP (Model Context Protocol) server that bridges AI assistants to Obs
 1. Add an args struct with `Deserialize + JsonSchema` in `server.rs`
 2. Add an `async fn` method inside the `#[tool_router] impl ObsidianServer` block with a `#[tool(description = "...")]` attribute
 3. If the tool needs a new API call, add the corresponding method to `ObsidianClient` in `client.rs`
+
+## Documentation
+
+- **README.md is the user manual** — write it from the perspective of an end user setting up and using the tool, not a developer contributing to the codebase. It should cover: prerequisites (with setup steps), installation, getting the API key, MCP client configuration, and available tools with user-friendly descriptions.
+- **CLAUDE.md is for contributors** — architecture, build commands, process rules.
 
 ## Process Rules
 

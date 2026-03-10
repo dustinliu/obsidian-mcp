@@ -5,7 +5,7 @@ build:
 
 # Release build
 [group('build')]
-build-release: __check
+build-release: check
     cargo build --release
 
 # Run the server
@@ -65,11 +65,16 @@ clean:
 
 # Full pre-release checks: unit-test, lint, e2e, coverage, build
 [group('composite')]
-__check: unit-test lint e2e coverage build
+check: unit-test lint e2e coverage build
 
 # CI-only checks (no e2e)
 [group('composite')]
-__ci-check: unit-test lint coverage build
+ci-check: unit-test lint coverage build
+
+# Install release binary to ~/.local/bin
+[group('deploy')]
+install: build-release
+    cp target/release/obsidian-mcp ~/.local/bin/obsidian-mcp
 
 # Release using cargo-release (e.g., just release patch)
 [group('deploy')]
