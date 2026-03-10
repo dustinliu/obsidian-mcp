@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use reqwest::Client;
 use serde::Deserialize;
 
@@ -110,7 +112,7 @@ impl ObsidianClient {
             .header("Content-Type", content_type)
             .header("Operation", params.operation.to_string())
             .header("Target-Type", params.target_type.to_string())
-            .header("Target", &params.target);
+            .header("Target", Self::percent_encode_target(&params.target));
 
         if let Some(ref delimiter) = params.target_delimiter {
             req = req.header("Target-Delimiter", delimiter);
@@ -305,7 +307,7 @@ impl ObsidianClient {
             .header("Content-Type", content_type)
             .header("Operation", params.operation.to_string())
             .header("Target-Type", params.target_type.to_string())
-            .header("Target", &params.target);
+            .header("Target", Self::percent_encode_target(&params.target));
 
         if let Some(ref delimiter) = params.target_delimiter {
             req = req.header("Target-Delimiter", delimiter);
@@ -330,6 +332,21 @@ impl ObsidianClient {
             Operation::Append if !content.ends_with('\n') => format!("{}\n", content),
             _ => content.to_owned(),
         }
+    }
+
+    /// Percent-encode non-ASCII bytes in a string for use in HTTP headers.
+    /// The Obsidian REST API requires non-ASCII characters in the Target header
+    /// to be URL-encoded (percent-encoded).
+    fn percent_encode_target(s: &str) -> String {
+        let mut out = String::with_capacity(s.len() * 3);
+        for b in s.bytes() {
+            if b.is_ascii() {
+                out.push(b as char);
+            } else {
+                let _ = write!(out, "%{:02X}", b);
+            }
+        }
+        out
     }
 }
 
@@ -643,6 +660,36 @@ mod tests {
         };
         let result = client
             .patch_note("note.md", &params, "new content\n")
+            .await
+            .unwrap();
+        assert_eq!(result, "ok");
+    }
+
+    #[tokio::test]
+    async fn patch_note_percent_encodes_non_ascii_target() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/vault/note.md"))
+            .and(header(
+                "Target",
+                "%E6%8A%80%E8%A1%93%E6%8C%91%E6%88%B0%E8%88%87%E9%A2%A8%E9%9A%AA",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .mount(&server)
+            .await;
+
+        let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Append,
+            target_type: TargetType::Heading,
+            target: "技術挑戰與風險".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+            content_type: None,
+        };
+        let result = client
+            .patch_note("note.md", &params, "content")
             .await
             .unwrap();
         assert_eq!(result, "ok");
@@ -996,6 +1043,35 @@ mod tests {
                 &params,
                 "- [ ] task\n",
             )
+            .await
+            .unwrap();
+        assert_eq!(result, "ok");
+    }
+
+    #[tokio::test]
+    async fn patch_periodic_note_percent_encodes_non_ascii_target() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(header(
+                "Target",
+                "%E6%8A%80%E8%A1%93%E6%8C%91%E6%88%B0%E8%88%87%E9%A2%A8%E9%9A%AA",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .mount(&server)
+            .await;
+
+        let client = mock_client(server.uri());
+        let params = PatchParams {
+            operation: Operation::Append,
+            target_type: TargetType::Heading,
+            target: "技術挑戰與風險".to_string(),
+            target_delimiter: None,
+            trim_target_whitespace: None,
+            create_target_if_missing: None,
+            content_type: None,
+        };
+        let result = client
+            .patch_periodic_note("daily", Some(2026), Some(3), Some(10), &params, "content")
             .await
             .unwrap();
         assert_eq!(result, "ok");
