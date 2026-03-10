@@ -19,7 +19,7 @@ just e2e                 # Run e2e tests (requires OBSIDIAN_API_KEY, see docs/e2
 just coverage            # Run unit tests (--lib) with ≥85% line coverage threshold
 just coverage-report     # Generate HTML unit test (--lib) coverage report
 just clean               # Clean build artifacts
-just deploy              # build-release + copy to ~/.local/bin
+just install             # build-release + copy to ~/.local/bin
 just release             # Release using cargo-release (default: patch)
 just ci-check            # CI-only checks: unit-test + lint + coverage + build (no e2e)
 ```

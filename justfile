@@ -71,6 +71,11 @@ check: unit-test lint e2e coverage build
 [group('composite')]
 ci-check: unit-test lint coverage build
 
+# Install release binary to ~/.local/bin
+[group('deploy')]
+install: build-release
+    cp target/release/obsidian-mcp ~/.local/bin/obsidian-mcp
+
 # Release using cargo-release (e.g., just release patch)
 [group('deploy')]
 release level="patch":
