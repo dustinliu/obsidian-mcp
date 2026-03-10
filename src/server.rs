@@ -489,36 +489,29 @@ mod tests {
         }
     }
 
+    fn assert_target_field_has_heading_path_docs(desc: &str, struct_name: &str) {
+        assert!(
+            desc.contains("Report::Summary"),
+            "{struct_name} 'target' field should include concrete example like 'Report::Summary', got: {desc}"
+        );
+        assert!(
+            desc.contains("# (h1)"),
+            "{struct_name} 'target' field should clarify that only # (h1) headings are top-level, got: {desc}"
+        );
+    }
+
     #[test]
     fn patch_note_target_field_describes_nested_heading_path() {
         let schema = schema_for!(PatchNoteArgs);
         let desc = get_field_description(&schema, "target");
-        assert!(
-            desc.contains("Report::Summary"),
-            "PatchNoteArgs 'target' field should include concrete example like 'Report::Summary', got: {}",
-            desc
-        );
-        assert!(
-            desc.contains("# (h1)"),
-            "PatchNoteArgs 'target' field should clarify that only # (h1) headings are top-level, got: {}",
-            desc
-        );
+        assert_target_field_has_heading_path_docs(&desc, "PatchNoteArgs");
     }
 
     #[test]
     fn patch_periodic_note_target_field_describes_nested_heading_path() {
         let schema = schema_for!(PatchPeriodicNoteArgs);
         let desc = get_field_description(&schema, "target");
-        assert!(
-            desc.contains("Report::Summary"),
-            "PatchPeriodicNoteArgs 'target' field should include concrete example like 'Report::Summary', got: {}",
-            desc
-        );
-        assert!(
-            desc.contains("# (h1)"),
-            "PatchPeriodicNoteArgs 'target' field should clarify that only # (h1) headings are top-level, got: {}",
-            desc
-        );
+        assert_target_field_has_heading_path_docs(&desc, "PatchPeriodicNoteArgs");
     }
 
     #[test]
