@@ -28,7 +28,7 @@ cargo install --path .
 Or build and copy to `~/.local/bin` with [just](https://github.com/casey/just):
 
 ```bash
-just deploy
+just install
 ```
 
 ## Configuration

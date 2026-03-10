@@ -334,9 +334,9 @@ impl ObsidianClient {
         }
     }
 
-    /// Percent-encode non-ASCII bytes in a string for use in HTTP headers.
+    /// Percent-encode non-ASCII characters in a string for use in HTTP headers.
     /// The Obsidian REST API requires non-ASCII characters in the Target header
-    /// to be URL-encoded (percent-encoded).
+    /// to be percent-encoded (each UTF-8 byte encoded individually).
     fn percent_encode_target(s: &str) -> String {
         let mut out = String::with_capacity(s.len() * 3);
         for b in s.bytes() {
